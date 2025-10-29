@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>QueryVeil</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      width: 320px;
+      padding: 16px;
+      background: #f5f5f5;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #e0e0e0;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ccc;
+    }
+
+    .status-dot.active {
+      background: #00AA00;
+      box-shadow: 0 0 8px rgba(0, 170, 0, 0.4);
+    }
+
+    .status-dot.paused {
+      background: #FFA500;
+    }
+
+    .status-dot.inactive {
+      background: #AA0000;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #toggleBtn {
+      background: #00AA00;
+      color: white;
+    }
+
+    #toggleBtn.inactive {
+      background: #AA0000;
+    }
+
+    #pauseBtn {
+      background: #FFA500;
+      color: white;
+    }
+
+    #pauseBtn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .settings-group {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .settings-group h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+    }
+
+    .setting-item label {
+      font-size: 14px;
+      color: #333;
+    }
+
+    select {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .stats {
+      background: white;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .stats h3 {
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+
+    .stat-label {
+      color: #666;
+    }
+
+    .stat-value {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .footer {
+      margin-top: 16px;
+      text-align: center;
+    }
+
+    .footer a {
+      color: #4A90E2;
+      text-decoration: none;
+      font-size: 13px;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    .privacy-notice {
+      background: #e8f5e9;
+      border-left: 3px solid #4CAF50;
+      padding: 8px 12px;
+      margin-top: 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #2e7d32;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🛡️ QueryVeil</h1>
+    <div class="status-indicator">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Inactive</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="toggleBtn" class="inactive">Start</button>
+    <button id="pauseBtn" disabled>Pause</button>
+  </div>
+
+  <div class="settings-group">
+    <h3>Quick Settings</h3>
+    <div class="setting-item">
+      <label for="intensitySelect">Intensity:</label>
+      <select id="intensitySelect">
+        <option value="low">Low (6/hr)</option>
+        <option value="medium" selected>Medium (12/hr)</option>
+        <option value="high">High (20/hr)</option>
+      </select>
+    </div>
+    <div class="setting-item">
+      <label for="engineSelect">Search Engine:</label>
+      <select id="engineSelect">
+        <option value="google">Google</option>
+        <option value="bing">Bing</option>
+        <option value="duckduckgo">DuckDuckGo</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="stats">
+    <h3>Statistics</h3>
+    <div class="stat-row">
+      <span class="stat-label">Total Queries:</span>
+      <span class="stat-value" id="totalQueries">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">This Session:</span>
+      <span class="stat-value" id="sessionQueries">0</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-label">Session Time:</span>
+      <span class="stat-value" id="sessionTime">0m</span>
+    </div>
+  </div>
+
+  <div class="privacy-notice">
+    🔒 Zero logging - All queries exist only in memory
+  </div>
+
+  <div class="footer">
+    <a href="#" id="optionsLink">Advanced Settings</a>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

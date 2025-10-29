@@ -1,0 +1,19 @@
+<!-- Simple SVG icon for QueryVeil -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- Shield background -->
+  <defs>
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Shield shape -->
+  <path d="M 64 10 L 100 25 L 100 60 C 100 90 64 110 64 110 C 64 110 28 90 28 60 L 28 25 Z" 
+        fill="url(#shieldGradient)" stroke="#fff" stroke-width="2"/>
+  
+  <!-- Question marks representing obfuscation -->
+  <text x="50" y="55" font-family="Arial, sans-serif" font-size="28" fill="#fff" font-weight="bold">?</text>
+  <text x="70" y="75" font-family="Arial, sans-serif" font-size="20" fill="#fff" opacity="0.7" font-weight="bold">?</text>
+  <text x="38" y="75" font-family="Arial, sans-serif" font-size="18" fill="#fff" opacity="0.5" font-weight="bold">?</text>
+</svg>

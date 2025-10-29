@@ -1,0 +1,49 @@
+# QueryVeil .gitignore
+
+# Firefox extension temporary files
+*.xpi
+web-ext-artifacts/
+
+# Development
+node_modules/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+~*
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor files
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Environment
+.env
+.env.local

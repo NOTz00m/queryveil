@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+  "name": "QueryVeil",
+  "version": "1.0.0",
+  "description": "Privacy-focused extension that generates realistic search query noise to obfuscate user search patterns and protect against profiling.",
+  
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+
+  "permissions": [
+    "storage",
+    "alarms",
+    "idle",
+    "https://www.google.com/*",
+    "https://www.bing.com/*",
+    "https://duckduckgo.com/*"
+  ],
+
+  "background": {
+    "scripts": ["background/main.js"]
+  },
+
+  "browser_action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": "icons/icon.svg",
+    "default_title": "QueryVeil"
+  },
+
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+
+  "content_security_policy": "script-src 'self'; object-src 'self'",
+
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "queryveil@privacy.extension",
+      "strict_min_version": "109.0"
+    }
+  }
+}

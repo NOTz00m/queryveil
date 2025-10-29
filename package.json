@@ -1,0 +1,38 @@
+{
+  "name": "queryveil",
+  "version": "1.0.0",
+  "description": "Privacy-focused search query noise generator for Firefox",
+  "scripts": {
+    "start": "web-ext run --source-dir=. --browser-console",
+    "build": "web-ext build --source-dir=. --artifacts-dir=dist --overwrite-dest",
+    "lint": "web-ext lint --source-dir=.",
+    "sign": "web-ext sign --source-dir=. --artifacts-dir=dist",
+    "test": "echo \"Manual testing required - see TESTING.md\" && exit 0"
+  },
+  "keywords": [
+    "privacy",
+    "security",
+    "search",
+    "obfuscation",
+    "firefox",
+    "extension",
+    "anti-tracking"
+  ],
+  "author": "QueryVeil Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/queryveil.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/queryveil/issues"
+  },
+  "homepage": "https://github.com/yourusername/queryveil#readme",
+  "devDependencies": {
+    "web-ext": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "private": false
+}
