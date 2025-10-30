@@ -26,10 +26,9 @@ Thank you for your interest in contributing to QueryVeil! This is a privacy-focu
 
 ### Suggesting Features
 
-1. Open a discussion first for major features
-2. Explain the privacy/security benefit
-3. Consider resource impact
-4. Propose implementation approach
+1. Explain the privacy/security benefit
+2. Consider resource impact
+3. Propose implementation approach
 
 ### Submitting Code
 
@@ -258,8 +257,6 @@ Contributors are recognized:
 
 ## Questions?
 
-- Open a [Discussion](https://github.com/NOTz00m/queryveil/discussions)
-- Join our community chat (if available)
 - Ask in your PR or issue
 
 ## License

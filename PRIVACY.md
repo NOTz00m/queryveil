@@ -128,8 +128,7 @@ We may update this privacy policy occasionally. Changes will be:
 ## Contact
 
 For privacy concerns or questions:
-- Open an issue on [GitHub](https://github.com/yourusername/queryveil/issues)
-- Email: privacy@queryveil.example
+- Open an issue on [GitHub](https://github.com/NOTz00m/queryveil/issues)
 
 ## Transparency Promise
 

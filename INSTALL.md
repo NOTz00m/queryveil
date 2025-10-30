@@ -149,16 +149,16 @@ Full configuration in dedicated page:
 
 #### Topic Categories
 Select which types of queries to generate:
-- 📰 News & Current Events
-- 🛍️ Shopping & Products
-- 🎬 Entertainment
-- 💻 Technology
-- 🏥 Health & Wellness
-- ✈️ Travel
-- 🍕 Food & Dining
-- 📚 Education
-- 📍 Local Places
-- 🔍 General Knowledge
+- News & Current Events
+- Shopping & Products
+- Entertainment
+- Technology
+- Health & Wellness
+- Travel
+- Food & Dining
+- Education
+- Local Places
+- General Knowledge
 
 **Strategy**: 
 - Disable topics you actively research (to avoid false positives)
@@ -315,11 +315,7 @@ Topics: 4-5 categories enabled
    - [GitHub Issues](https://github.com/NOTz00m/queryveil/issues)
    - Someone may have had same problem
 
-3. **Ask Community**
-   - [GitHub Discussions](https://github.com/NOTz00m/queryveil/discussions)
-   - Community support
-
-4. **Report Bug**
+3. **Report Bug**
    - Use bug report template
    - Include version, OS, steps to reproduce
 
@@ -331,8 +327,7 @@ After successful installation:
 2. ✅ Check statistics to verify operation
 3. ✅ Adjust settings based on your needs
 4. ✅ Review generated queries (debug mode)
-5. ✅ Join community discussions
-6. ✅ Consider contributing!
+5. ✅ Consider contributing!
 
 ## Uninstallation
 

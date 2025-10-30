@@ -202,7 +202,6 @@ cd queryveil
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/NOTz00m/queryveil/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/NOTz00m/queryveil/discussions)
 - **Documentation**: [Wiki](https://github.com/NOTz00m/queryveil/wiki)
 
 ## Disclaimer

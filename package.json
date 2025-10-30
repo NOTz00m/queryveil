@@ -22,12 +22,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/queryveil.git"
+    "url": "https://github.com/NOTz00m/queryveil.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/queryveil/issues"
+    "url": "https://github.com/NOTz00m/queryveil/issues"
   },
-  "homepage": "https://github.com/yourusername/queryveil#readme",
+  "homepage": "https://github.com/NOTz00m/queryveil#readme",
   "devDependencies": {
     "web-ext": "^7.0.0"
   },

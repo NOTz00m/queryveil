@@ -1,6 +1,6 @@
 /**
  * QueryVeil Background Script
- * Main orchestrator for privacy-preserving query noise generation
+ * Main script for privacy-preserving query noise generation
  * 
  * Note: This file includes all classes inline to work with Firefox's background.scripts
  * For the modular source, see the separate files in this directory.

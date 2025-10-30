@@ -174,8 +174,6 @@ Example console output:
 
 - 📖 **Full Documentation**: See [README.md](README.md)
 - 🐛 **Report Issues**: [GitHub Issues](https://github.com/NOTz00m/queryveil/issues)
-- 💬 **Ask Questions**: [GitHub Discussions](https://github.com/NOTz00m/queryveil/discussions)
-- 🔒 **Security**: Email security@queryveil.example
 
 ## FAQ
 

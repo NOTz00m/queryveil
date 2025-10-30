@@ -2,7 +2,7 @@
  * QueryVeil Background Script (Combined Version)
  * Main orchestrator for privacy-preserving query noise generation
  * 
- * This file combines all modules into one for Firefox compatibility
+ * This file combines all modules into one for easier deployment.
  */
 
 // ============================================================================
