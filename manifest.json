@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "QueryVeil",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Privacy-focused extension that generates realistic search query noise to obfuscate user search patterns and protect against profiling.",
   
   "icons": {
