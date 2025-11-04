@@ -72,7 +72,7 @@ export class BehaviorSimulator {
     const timeWeight = this.getTimeOfDayWeight();
     
     // Adjust based on intensity setting
-    const intensityMultiplier = this.getIntensityMultiplier(settings.intensity);
+    const intensityMultiplier = this.getIntensityMultiplier(settings.intensity, settings.customRate);
     
     const totalDelay = Math.max(
       60000, // Minimum 1 minute between queries
@@ -105,14 +105,21 @@ export class BehaviorSimulator {
 
   /**
    * Convert intensity setting to multiplier
-   * @param {string} intensity - 'low', 'medium', 'high'
+   * @param {string} intensity - 'low', 'medium', 'high', 'custom'
+   * @param {number} customRate - Custom queries per hour (if intensity is 'custom')
    * @returns {number}
    */
-  getIntensityMultiplier(intensity) {
+  getIntensityMultiplier(intensity, customRate = null) {
+    // If custom intensity with a rate, calculate multiplier based on medium (12/hour)
+    if (intensity === 'custom' && customRate) {
+      return customRate / 12.0;
+    }
+    
     const multipliers = {
       'low': 0.5,    // 6 queries/hour max
       'medium': 1.0,  // 12 queries/hour max
-      'high': 1.8     // 20 queries/hour max
+      'high': 1.8,    // 20 queries/hour max
+      'custom': 1.0   // Default if no custom rate specified
     };
     return multipliers[intensity] || 1.0;
   }
@@ -120,13 +127,20 @@ export class BehaviorSimulator {
   /**
    * Check if we should execute a query now based on rate limiting
    * @param {string} intensity
+   * @param {number} customRate - Custom queries per hour (if intensity is 'custom')
    * @returns {boolean}
    */
-  canExecuteQuery(intensity) {
+  canExecuteQuery(intensity, customRate = null) {
+    // If custom intensity, use the custom rate
+    if (intensity === 'custom' && customRate) {
+      return this.queriesThisHour < customRate;
+    }
+    
     const maxQueries = {
       'low': 6,
       'medium': 12,
-      'high': 20
+      'high': 20,
+      'custom': 12  // Default if no custom rate specified
     };
     
     return this.queriesThisHour < (maxQueries[intensity] || 12);

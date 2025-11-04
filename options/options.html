@@ -323,7 +323,19 @@
               <option value="low">Low (6 queries/hour)</option>
               <option value="medium">Medium (12 queries/hour)</option>
               <option value="high">High (20 queries/hour)</option>
+              <option value="custom">Custom</option>
             </select>
+          </div>
+
+          <div class="setting-item" id="customRateItem" style="display: none;">
+            <div>
+              <label>Custom Rate</label>
+              <span class="setting-item-description">Queries per hour (1-30)</span>
+            </div>
+            <div class="setting-control">
+              <input type="number" id="customRate" min="1" max="30" value="12">
+              <span>queries/hour</span>
+            </div>
           </div>
 
           <div class="setting-item">

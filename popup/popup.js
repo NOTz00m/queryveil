@@ -62,6 +62,12 @@ function updateUI() {
   // Update settings
   document.getElementById('intensitySelect').value = currentStatus.settings.intensity;
   document.getElementById('engineSelect').value = currentStatus.settings.searchEngine;
+  
+  // Update custom option text if intensity is custom
+  if (currentStatus.settings.intensity === 'custom') {
+    const customRate = currentStatus.settings.customRate || 12;
+    document.getElementById('customOption').textContent = `Custom (${customRate}/hr)`;
+  }
 
   // Update statistics
   document.getElementById('totalQueries').textContent = currentStatus.statistics.totalQueries || 0;

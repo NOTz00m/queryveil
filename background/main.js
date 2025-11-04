@@ -605,12 +605,28 @@ class QueryVeil {
 
   async init() {
     console.log('[QueryVeil] Initializing...');
+    
+    // Load settings first and ensure they're fully applied
     await this.loadSettings();
+    
+    // Apply topic settings to query generator
+    if (this.settings.topics) {
+      this.queryGen.updateTopicSettings(this.settings.topics);
+    }
+    
     this.setupListeners();
+    
+    // Start if enabled - settings are now fully loaded and applied
     if (this.settings.enabled) {
+      if (this.settings.debugMode) {
+        console.log('[QueryVeil] Auto-starting from saved settings');
+      }
       this.start();
     }
-    console.log('[QueryVeil] Initialized');
+    
+    if (this.settings.debugMode) {
+      console.log('[QueryVeil] Initialized with intensity:', this.settings.intensity);
+    }
   }
 
   async loadSettings() {
@@ -618,9 +634,21 @@ class QueryVeil {
       const stored = await browser.storage.local.get('settings');
       this.settings = stored.settings || this.getDefaultSettings();
       
+      // Validate settings structure
+      if (!this.settings.intensity) {
+        this.settings.intensity = 'medium';
+      }
+      if (!this.settings.topics) {
+        this.settings.topics = this.getDefaultSettings().topics;
+      }
+      
       const stats = await browser.storage.local.get('statistics');
       if (stats.statistics) {
         this.statistics = { ...this.statistics, ...stats.statistics };
+      }
+      
+      if (this.settings.debugMode) {
+        console.log('[QueryVeil] Settings loaded:', this.settings.intensity, 'intensity');
       }
     } catch (error) {
       console.error('[QueryVeil] Error loading settings:', error);
@@ -632,6 +660,7 @@ class QueryVeil {
     return {
       enabled: false,
       intensity: 'medium',
+      customRate: 12,
       searchEngine: 'google',
       enableResultClicks: false,
       debugMode: false,
@@ -790,7 +819,13 @@ class QueryVeil {
   }
 
   async handleAlarm() {
-    if (!this.isActive || this.isPaused) {
+    // Don't do anything if inactive - no rescheduling
+    if (!this.isActive) {
+      return;
+    }
+
+    // If paused, reschedule for later
+    if (this.isPaused) {
       this.scheduleNextQuery();
       return;
     }
@@ -814,7 +849,7 @@ class QueryVeil {
 
   async executeNoiseQuery() {
     try {
-      if (!this.behaviorSim.canExecuteQuery(this.settings.intensity)) {
+      if (!this.behaviorSim.canExecuteQuery(this.settings.intensity, this.settings.customRate)) {
         if (this.settings.debugMode) {
           console.log('[QueryVeil] Rate limit reached for this hour');
         }
