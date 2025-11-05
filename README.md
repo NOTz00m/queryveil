@@ -1,213 +1,147 @@
 # QueryVeil 🛡️
 
-**Privacy-Focused Search Query Noise Generator for Firefox**
+**Privacy-focused search query noise generator for Firefox**
 
-QueryVeil is a sophisticated browser extension that protects your privacy by generating realistic search query noise, making it computationally expensive for search engines to build accurate user profiles while evading automated bot detection systems.
+QueryVeil makes it expensive for search engines to build accurate profiles about you by generating realistic noise queries that blend seamlessly with your actual searches. Uses probability distributions and behavioral modeling to avoid detection.
 
-## Core Objective
+## What It Does
 
-Create indistinguishable noise queries that blend seamlessly with genuine human search behavior, obfuscating your real search patterns without compromising usability or creating new tracking vectors.
+Generates realistic search queries in the background while you browse. These noise queries are indistinguishable from real human searches, making it computationally expensive for trackers to separate signal from noise in your search history.
 
-## Key Features
-
-### Human-Like Behavioral Simulation
-- **Variable Timing**: Uses probability distributions (Poisson, Normal, Gamma) that match real human search patterns
-- **Query Complexity**: Mixes 2-word, 3-5 word, and long-tail queries with realistic distribution
-- **Realistic Imperfections**: Includes occasional typos (1-2%), autocorrect patterns, and refinement searches
-- **Session-Based Patterns**: Clusters of related queries followed by pauses, mimicking real research sessions
-- **Time-of-Day Weighting**: More activity during waking hours, less at night
-
-### Intelligent Query Generation
-- **Markov Chain Generation**: Creates natural-sounding queries using learned patterns
-- **Topic Diversity**: Generates queries across 10 categories (news, shopping, tech, health, etc.)
-- **Trending Topics**: Optional integration with current trends for contextually relevant queries
-- **Thematic Coherence**: Maintains consistency within sessions but diversity across sessions
-- **No Bot Patterns**: Avoids repetitive structures, random word salad, or suspicious clustering
-
-### Anti-Detection Mechanisms
-- **Timing Randomization**: Normal distributions, never fixed intervals
-- **Rate Limiting**: Human-plausible query rates (6-20 per hour based on intensity)
-- **Browser Fingerprint Consistency**: Identical headers and request patterns as normal browsing
-- **Natural Traffic Mixing**: Generates queries during active browsing periods
-- **Cookie/Session Handling**: Maintains consistent session behavior
-- **Referrer Simulation**: Realistic referrer headers (direct navigation, previous searches, news sites, social media)
-- **Exponential Backoff**: Automatically reduces rate if errors detected
-
-### User Interface & Control
-- **Simple Popup**: Quick start/stop/pause controls with live statistics
-- **Comprehensive Settings**: Full control over intensity, topics, schedules, and features
-- **Statistics Dashboard**: See total queries generated (without storing actual query content)
-- **One-Click Pause**: Temporarily disable for clean search results
-- **Visual Status**: Badge indicator shows active/paused/inactive state
-
-### Privacy Safeguards
-- **Zero Logging**: Generated queries exist only in memory, never stored
-- **No Telemetry**: Fully local operation, no phone-home functionality
-- **No History Access**: Never accesses your real search history
-- **Open Source**: Fully auditable code
-- **Minimal Permissions**: Only requests what's absolutely necessary
+**Key features:**
+- Human-like timing patterns (no fixed intervals)
+- Natural query generation using Markov chains
+- Topic diversity across 10 categories
+- Realistic typos and search refinements
+- Session-based clustering (like real research sessions)
+- Anti-detection mechanisms (timing randomization, realistic headers)
+- Zero logging - everything runs locally
 
 ## Installation
 
-### Firefox (Primary)
-1. Download the latest release or clone this repository
+### From Firefox Add-ons (Recommended)
+
+Install directly from the Firefox Add-ons store:
+**[Get QueryVeil](https://addons.mozilla.org/en-US/firefox/addon/queryveil/)**
+
+### Manual Installation (Development)
+
+1. Clone this repo or download the source
 2. Open Firefox and navigate to `about:debugging#/runtime/this-firefox`
 3. Click "Load Temporary Add-on"
-4. Select the `manifest.json` file from the extension directory
-5. Click the QueryVeil icon in your toolbar to configure
+4. Select the `manifest.json` file
 
-### Building from Source
-```bash
-git clone https://github.com/NOTz00m/queryveil.git
-cd queryveil
-# No build step required - pure JS extension
-```
+Note: Temporary add-ons are removed when Firefox restarts.
 
 ## Usage
 
 ### Quick Start
+
 1. Click the QueryVeil icon in your toolbar
-2. Click "Start" to begin generating noise queries
-3. Adjust intensity (Low/Medium/High) based on your preference
-4. Click "Advanced Settings" for detailed configuration
+2. Click "Start" - badge turns green
+3. That's it. The extension runs in the background.
 
-### Configuration Options
+**Controls:**
+- Green badge = Active
+- Orange badge = Paused
+- Red badge = Inactive
 
-#### Intensity Levels
-- **Low**: ~6 queries per hour (minimal bandwidth usage)
-- **Medium**: ~12 queries per hour (recommended balance)
-- **High**: ~20 queries per hour (maximum obfuscation)
+### Settings
 
-#### Topic Categories
-Enable/disable specific categories to control query diversity:
-- News & Current Events
-- Shopping & Products
-- Entertainment (movies, shows, music)
-- Technology & Tutorials
-- Health & Wellness
-- Travel & Destinations
-- Food & Restaurants
-- Education & Learning
-- Local Places & Services
-- General Knowledge
+Click "Advanced Settings" to configure:
 
-#### Advanced Features
-- **Result Click Simulation**: Occasionally fetches result pages for more realistic behavior (uses more bandwidth)
-- **Schedule**: Limit noise generation to specific hours
-- **Debug Mode**: Log generated queries to console for inspection
+**Intensity levels:**
+- Low: ~6 queries/hour
+- Medium: ~12 queries/hour (default)
+- High: ~20 queries/hour
+- Custom: Set your own rate (1-30/hour)
 
-### Anti-Detection Strategy
+**Topics:** Enable/disable categories like news, shopping, tech, health, etc. More diversity = better obfuscation.
 
-QueryVeil employs multiple layers of anti-detection:
+**Schedule:** Limit generation to specific hours if needed.
 
-1. **Timing Patterns**
-   - Macro: Daily activity curves (higher during day, lower at night)
-   - Meso: Session clustering (2-8 related queries, then long pause)
-   - Micro: Individual query jitter (truncated normal distribution)
+**Result clicks:** Optionally simulate clicking on results (uses more bandwidth but more realistic).
 
-2. **Query Authenticity**
-   - Real query structures from Markov chains
-   - Topic coherence within sessions
-   - Realistic typo patterns based on keyboard layout
-   - Natural length distribution (30% short, 50% medium, 15% long, 5% very long)
+## How It Works
 
-3. **Network Behavior**
-   - Identical headers to normal browser requests
-   - Realistic referrer headers (60% direct, 25% same engine, 10% news, 5% social)
-   - Native fetch() API for automatic browser fingerprint consistency
-   - Cookie jar shared with normal browsing
+### Timing Patterns
 
-4. **Rate Management**
-   - Never exceeds human-plausible rates
-   - Exponential backoff on errors
-   - Automatic pause after repeated failures
-   - Activity-based scheduling (more queries during active browsing)
+Real users don't search at fixed intervals. QueryVeil uses:
+- Exponential distribution for within-session delays (~2-5 min)
+- Gamma distribution for between-session gaps (~30-90 min)
+- Time-of-day weighting (more active during waking hours)
+- Random jitter to prevent any predictable patterns
 
-## Technical Details
+### Query Generation
 
-### Human Behavior Modeling
+Generates natural-sounding queries using:
+- Markov chains trained on realistic search patterns
+- Session coherence (related queries clustered together)
+- Realistic length distribution (30% short, 50% medium, 15% long, 5% very long)
+- Occasional typos (~1.5%) based on keyboard layout
+- Refinement searches (~10% of the time)
 
-**Query Timing Formula:**
-```
-Next Query Time = SessionStart + Σ(ExponentialRV(λ=180s) + NormalJitter(μ=0, σ=30s))
-Session Start = LastSession + GammaRV(shape=2, scale=1800s)
-```
+### Anti-Detection
 
-**Query Complexity Distribution:**
-- 30% short (1-2 words)
-- 50% medium (3-5 words)
-- 15% long (6-10 words)
-- 5% very long (full questions)
+- Uses browser's native fetch() API (identical fingerprint to normal browsing)
+- Realistic referrer headers (60% direct, 25% previous search, 15% external)
+- Rate limiting to stay within human-plausible bounds
+- Exponential backoff if errors detected
+- Cookie handling identical to normal browsing
 
-**Typo Simulation:**
-- 1.5% of queries contain one typo
-- Adjacent key errors based on QWERTY layout
-- Only applied to queries >3 words
+## Privacy Guarantees
 
-### Privacy Guarantees
+✅ **Zero logging** - Generated queries exist only in memory  
+✅ **Local processing** - No external servers or APIs  
+✅ **No telemetry** - No data collection whatsoever  
+✅ **Open source** - Audit the code yourself  
+✅ **No history access** - Never looks at your real searches  
 
-**What We Don't Do:**
-- ❌ Store generated queries
-- ❌ Access your real search history
-- ❌ Send telemetry or analytics
-- ❌ Create unique fingerprints
-- ❌ Track your actual searches
+The extension only stores:
+- Your preferences (intensity, topics, schedule)
+- Query counts (numbers only, not the actual queries)
 
-**What We Do:**
-- ✅ Generate queries entirely in memory
-- ✅ Use browser's native networking (no custom fingerprint)
-- ✅ Store only user preferences (encrypted if possible)
-- ✅ Operate fully locally
-- ✅ Provide open source code for auditing
+## Performance
+
+- Memory: <50MB typical
+- CPU: <1% average
+- Network: ~0.5-2MB/hour depending on intensity
+- Battery: Minimal impact through efficient scheduling
+
+## Tips for Maximum Privacy
+
+1. Use at least Medium intensity (more noise = better obfuscation)
+2. Enable diverse topics (5+ categories recommended)
+3. Run continuously rather than on/off sporadically
+4. Consider enabling result clicks for more realism
+5. Use with a VPN for additional protection
 
 ## Contributing
 
-Contributions are welcome! This is a privacy tool, so all contributions will be carefully reviewed.
+Found a bug or want to improve something? Open an issue or submit a pull request. Make sure any changes maintain the privacy-first design principles.
 
-### Development Setup
-```bash
-git clone https://github.com/NOTz00m/queryveil.git
-cd queryveil
-# Open in Firefox for testing
-```
+## Acknowledgments & Research
 
-### Testing
-1. Load extension in Firefox (`about:debugging`)
-2. Enable debug mode in settings
-3. Check browser console for query logs
-4. Verify queries appear human-like
-5. Monitor network tab for proper headers
+QueryVeil is inspired by academic research on search query obfuscation and privacy-enhancing technologies:
 
-### Code Style
-- Use modern JavaScript (ES6+)
-- Comment complex algorithms
-- Prioritize privacy and security
-- Keep dependencies minimal (currently zero!)
+- **TrackMeNot** (Howe & Nissenbaum, 2009) - Original concept of query obfuscation through noise generation
+- **"Defeating search query privacy" studies** - Research on behavioral modeling and ML classifiers for user profiling
+- **Differential Privacy** literature - Concepts of adding calibrated noise for privacy protection
 
-## Roadmap
+This tool extends those ideas with modern anti-detection techniques including advanced timing distributions, session modeling, and fingerprint consistency.
 
-- [ ] Chrome/Edge support (Manifest V3 compatible)
-- [ ] GPT-2 level query generation (local, privacy-preserving)
-- [ ] Machine learning classifier evasion testing
-- [ ] User behavior learning (opt-in, privacy-preserving)
-- [ ] Multi-language query support
-- [ ] Tor integration for maximum privacy
-- [ ] Advanced result interaction simulation
+## Known Limitations
 
-## Acknowledgments
-
-- Inspired by privacy research on search query obfuscation
-- Built with respect for user autonomy and digital privacy
+- Search engines are constantly improving detection. No guarantees of permanent undetectability.
+- Uses bandwidth (though minimal). Not ideal for metered connections at high intensity.
+- More effective over longer time periods. Works best when left running.
+- Currently Firefox only. Chrome/Edge support coming.
 
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/NOTz00m/queryveil/issues)
-- **Documentation**: [Wiki](https://github.com/NOTz00m/queryveil/wiki)
-
-## Disclaimer
-
-This extension is provided as-is for privacy research and protection. While we've designed it to be undetectable, search engines may update their detection systems. Use at your own discretion. The authors are not responsible for any consequences of using this software.
+- **Firefox Store**: [Leave a review](https://addons.mozilla.org/en-US/firefox/addon/queryveil/)
 
 ---
 
-*"The right to privacy is the right to be left alone." - Warren & Brandeis*
+*"Privacy is not about having something to hide. Privacy is about something to protect." - Anonymous*

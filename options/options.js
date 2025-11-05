@@ -45,6 +45,7 @@ function getDefaultSettings() {
   return {
     enabled: false,
     intensity: 'medium',
+    customRate: 12,
     searchEngine: 'google',
     enableResultClicks: false,
     debugMode: false,
@@ -112,6 +113,7 @@ function updateUI() {
   // General settings
   document.getElementById('intensity').value = currentSettings.intensity;
   document.getElementById('searchEngine').value = currentSettings.searchEngine;
+  document.getElementById('customRate').value = currentSettings.customRate || 12;
   
   // Toggle switches
   updateToggle('enableResultClicks', currentSettings.enableResultClicks);
@@ -122,6 +124,9 @@ function updateUI() {
   document.getElementById('startHour').value = currentSettings.schedule?.startHour || 9;
   document.getElementById('endHour').value = currentSettings.schedule?.endHour || 23;
   updateScheduleVisibility();
+
+  // Custom rate visibility
+  updateCustomRateVisibility();
 
   // Topics - already handled in populateTopicGrid
 }
@@ -150,6 +155,15 @@ function updateScheduleVisibility() {
 }
 
 /**
+ * Update custom rate input visibility
+ */
+function updateCustomRateVisibility() {
+  const customRateItem = document.getElementById('customRateItem');
+  const intensity = document.getElementById('intensity').value;
+  customRateItem.style.display = intensity === 'custom' ? 'flex' : 'none';
+}
+
+/**
  * Set up event listeners
  */
 function setupEventListeners() {
@@ -165,6 +179,18 @@ function setupEventListeners() {
 
   document.getElementById('debugMode').addEventListener('click', function() {
     this.classList.toggle('active');
+  });
+
+  // Intensity change
+  document.getElementById('intensity').addEventListener('change', function() {
+    updateCustomRateVisibility();
+  });
+
+  // Custom rate validation
+  document.getElementById('customRate').addEventListener('input', function() {
+    const value = parseInt(this.value);
+    if (value < 1) this.value = 1;
+    if (value > 30) this.value = 30;
   });
 
   // Save button
@@ -185,9 +211,21 @@ function setupEventListeners() {
  */
 async function saveSettings() {
   try {
+    // Validate custom rate if custom intensity selected
+    const intensity = document.getElementById('intensity').value;
+    let customRate = parseInt(document.getElementById('customRate').value);
+    
+    if (intensity === 'custom') {
+      if (isNaN(customRate) || customRate < 1 || customRate > 30) {
+        alert('Custom rate must be between 1 and 30 queries per hour.');
+        return;
+      }
+    }
+
     // Gather all settings
     const settings = {
-      intensity: document.getElementById('intensity').value,
+      intensity: intensity,
+      customRate: customRate,
       searchEngine: document.getElementById('searchEngine').value,
       enableResultClicks: document.getElementById('enableResultClicks').classList.contains('active'),
       debugMode: document.getElementById('debugMode').classList.contains('active'),
