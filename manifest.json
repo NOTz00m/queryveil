@@ -28,8 +28,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "queryveil@privacy.extension",
-      "strict_min_version": "112.0",
-      "data_collection_permissions": {}
+      "strict_min_version": "112.0"
     }
   },
 
