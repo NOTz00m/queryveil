@@ -3,16 +3,27 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
   }
 
   // Called on runtime.onInstalled and runtime.onStartup
-  async init() {
-    console.log('[QueryVeil] Service Worker Initializing...');
+  async init(reason) {
+    console.log('[QueryVeil] Service Worker Initializing... Reason:', reason);
     await this.initializationPromise;
+
+    // Reset session stats on startup
+    if (reason === 'startup') {
+        const stats = await this.getStatistics();
+        stats.queriesThisSession = 0;
+        stats.sessionStartTime = Date.now();
+        await browser.storage.local.set({ statistics: stats });
+    }
 
     this.updateBadge(); // Ensure badge is correct
     
     // Ensure alarm state is correct (resume if needed)
     if (this.settings.enabled && !this.settings.paused) {
       const alarm = await browser.alarms.get(this.ALARM_NAME);
-      if (!alarm) {
+      
+      // If installing/updating or missing alarm, schedule
+      if (!alarm || reason === 'install') {
+        if (reason === 'install') console.log('[QueryVeil] Fresh install/update - rescheduling');
         this.scheduleNextRun();
       }
     }
@@ -47,7 +58,7 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
 
   async loadSettings() {
     try {
-      const result = await browser.storage.local.get(['settings', 'statistics']);
+      const result = await browser.storage.local.get(['settings', 'statistics', 'simulatorState']);
       this.settings = result.settings || this.getDefaultSettings();
       
       // Ensure specific defaults exist (migration)
@@ -60,11 +71,26 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
       if (this.settings.topics) {
         this.queryGen.updateTopicSettings(this.settings.topics);
       }
+
+      // Restore behavior simulator state
+      if (result.simulatorState) {
+        this.behaviorSim.setState(result.simulatorState);
+      }
+
     } catch (error) {
       console.error('[QueryVeil] Error loading settings:', error);
       this.settings = this.getDefaultSettings();
     }
     return this.settings;
+  }
+
+  async saveState() {
+    try {
+        const state = this.behaviorSim.getState();
+        await browser.storage.local.set({ simulatorState: state });
+    } catch (e) {
+        console.error('[QueryVeil] Failed to save state:', e);
+    }
   }
 
   getDefaultSettings() {
@@ -216,6 +242,7 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
       console.log(`[QueryVeil] Next query in ${safeDelay.toFixed(2)} minutes`);
     }
     browser.alarms.create(this.ALARM_NAME, { delayInMinutes: safeDelay });
+    this.saveState();
   }
 
   async executeQuery() {
@@ -289,6 +316,6 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
 // Initialize the service instance
 const service = new QueryVeilService();
 service.setupListeners(); // Listeners must be synchronous to Register
-browser.runtime.onInstalled.addListener(() => service.init());
-browser.runtime.onStartup.addListener(() => service.init());
+browser.runtime.onInstalled.addListener(() => service.init('install'));
+browser.runtime.onStartup.addListener(() => service.init('startup'));
 

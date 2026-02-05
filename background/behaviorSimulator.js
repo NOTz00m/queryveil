@@ -11,6 +11,23 @@ export class BehaviorSimulator {
     this.hourResetTime = Date.now() + 3600000;
   }
 
+  getState() {
+    return {
+      currentSession: this.currentSession,
+      lastQueryTime: this.lastQueryTime,
+      queriesThisHour: this.queriesThisHour,
+      hourResetTime: this.hourResetTime
+    };
+  }
+
+  setState(state) {
+    if (!state) return;
+    this.currentSession = state.currentSession;
+    this.lastQueryTime = state.lastQueryTime;
+    this.queriesThisHour = state.queriesThisHour || 0;
+    this.hourResetTime = state.hourResetTime || (Date.now() + 3600000);
+  }
+
   /**
    * Get next query time based on realistic human patterns
    * @param {Object} settings - User settings
@@ -57,8 +74,18 @@ export class BehaviorSimulator {
    * @returns {number} Milliseconds until session starts
    */
   startNewSession(settings) {
-    // Inter-session gap: 30-90 minutes using Gamma distribution
-    const sessionGap = this.gammaRandom(2, 1800000); // shape=2, scale=30min
+    // Calculate intensity multiplier
+    const multiplier = this.getIntensityMultiplier(settings.intensity, settings.customRate);
+    
+    // Inter-session gap:
+    // Base scale 30min (1800000ms).
+    // Adjusted by intensity: High intensity needs much frequent sessions.
+    // For high intensity (1.8x), we want gap to be much shorter.
+    // Let's divide scale by multiplier^2 to make it more aggressive.
+    const baseScale = 1800000;
+    const adjustedScale = baseScale / (multiplier * multiplier); 
+
+    const sessionGap = this.gammaRandom(2, adjustedScale); 
     
     // Session will have 2-8 related queries
     const sessionLength = Math.floor(this.normalRandom(4, 2));

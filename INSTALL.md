@@ -48,8 +48,8 @@ Click "Advanced Settings" from the popup to customize:
 **Intensity levels:**
 - Low (6/hour) - Light usage, minimal bandwidth
 - Medium (12/hour) - Recommended for most users
-- High (20/hour) - Maximum privacy, more bandwidth
-- Custom (1-30/hour) - Set your own rate
+- High (20-25/hour) - Maximum privacy, more frequent noise
+- Custom (1-60/hour) - Set your own rate
 
 **Topics:**
 - Enable 5-6 diverse categories for best results
@@ -98,6 +98,8 @@ Click "Advanced Settings" from the popup to customize:
 
 **Queries not increasing:**
 - Wait 5-10 minutes (timing is randomized)
+- Check if you are in a "between-session" gap (the extension simulates breaks like a real human)
+- Ensure your PC is not in a low-power sleep mode that suspends background scripts
 - Check console (F12) for errors
 - Verify you're within scheduled hours if enabled
 

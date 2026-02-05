@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QueryVeil",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Privacy-focused extension that generates realistic search query noise to obfuscate user search patterns and protect against profiling.",
   
   "icons": {
@@ -28,7 +28,8 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "queryveil@privacy.extension",
-      "strict_min_version": "109.0"
+      "strict_min_version": "112.0",
+      "data_collection_permissions": {}
     }
   },
 

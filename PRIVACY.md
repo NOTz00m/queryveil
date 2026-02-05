@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last Updated: November 4, 2025**
+**Last Updated: February 5, 2026**
 
 QueryVeil is built on a simple principle: we can't collect what we don't capture.
 
@@ -18,6 +18,7 @@ QueryVeil is built on a simple principle: we can't collect what we don't capture
 Everything stays on your device:
 
 - ✅ Your settings (intensity, topics, schedule)
+- ✅ Simulation state (to ensure timing consistency across restarts)
 - ✅ Query counts (just numbers, not the actual queries)
 - ✅ Extension state (on/paused/off)
 

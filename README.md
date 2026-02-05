@@ -14,6 +14,7 @@ Generates realistic search queries in the background while you browse. These noi
 - Topic diversity across 10 categories
 - Realistic typos and search refinements
 - Session-based clustering (like real research sessions)
+- State persistence (resumes progress across browser restarts)
 - Anti-detection mechanisms (timing randomization, realistic headers)
 - Zero logging - everything runs locally
 
@@ -53,8 +54,8 @@ Click "Advanced Settings" to configure:
 **Intensity levels:**
 - Low: ~6 queries/hour
 - Medium: ~12 queries/hour (default)
-- High: ~20 queries/hour
-- Custom: Set your own rate (1-30/hour)
+- High: ~20-25 queries/hour
+- Custom: Set your own rate (1-60/hour)
 
 **Topics:** Enable/disable categories like news, shopping, tech, health, etc. More diversity = better obfuscation.
 
@@ -68,7 +69,8 @@ Click "Advanced Settings" to configure:
 
 Real users don't search at fixed intervals. QueryVeil uses:
 - Exponential distribution for within-session delays (~2-5 min)
-- Gamma distribution for between-session gaps (~30-90 min)
+- Gamma distribution for between-session gaps, scaled by intensity
+- Persistent state tracking to maintain realistic patterns after PC restarts
 - Time-of-day weighting (more active during waking hours)
 - Random jitter to prevent any predictable patterns
 
