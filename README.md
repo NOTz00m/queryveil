@@ -1,4 +1,4 @@
-# QueryVeil 🛡️
+# QueryVeil
 
 **Privacy-focused search query noise generator for Firefox**
 
@@ -145,3 +145,4 @@ This tool extends those ideas with modern anti-detection techniques including ad
 ---
 
 *"Privacy is not about having something to hide. Privacy is about something to protect." - Anonymous*
+
