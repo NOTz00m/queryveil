@@ -1,19 +1,49 @@
-/**
- * QueryVeil Popup UI Controller
- */
+const browser = globalThis.browser || globalThis.chrome;
 
+// State
 let currentStatus = null;
+let currentTheme = localStorage.getItem('theme') || 'light';
 
-// Initialize popup
+// Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+  applyTheme(currentTheme);
   await loadStatus();
   setupEventListeners();
-  startStatusRefresh();
+  
+  // Listen for broadcast updates from options/background
+  browser.runtime.onMessage.addListener((message) => {
+    if (message.type === 'statusUpdated') {
+      currentStatus = message;
+      updateUI();
+    }
+  });
+
+  // Auto-refresh stats fallback
+  setInterval(loadStatus, 2000);
 });
 
-/**
- * Load current status from background
- */
+// --- Theme Logic ---
+function toggleTheme() {
+  currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+  localStorage.setItem('theme', currentTheme);
+  applyTheme(currentTheme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  const sunIcon = document.getElementById('sunIcon');
+  const moonIcon = document.getElementById('moonIcon');
+  
+  if (theme === 'dark') {
+    sunIcon.style.display = 'block';
+    moonIcon.style.display = 'none';
+  } else {
+    sunIcon.style.display = 'none';
+    moonIcon.style.display = 'block';
+  }
+}
+
+// --- Data Logic ---
 async function loadStatus() {
   try {
     const response = await browser.runtime.sendMessage({ type: 'getStatus' });
@@ -24,117 +54,109 @@ async function loadStatus() {
   }
 }
 
-/**
- * Update UI elements based on current status
- */
 function updateUI() {
   if (!currentStatus) return;
 
-  // Update status indicator
-  const statusDot = document.getElementById('statusDot');
+  const statusCard = document.getElementById('statusCard');
   const statusText = document.getElementById('statusText');
   const toggleBtn = document.getElementById('toggleBtn');
   const pauseBtn = document.getElementById('pauseBtn');
+  
+  const { isActive, isPaused, settings, statistics } = currentStatus;
 
-  if (currentStatus.isActive && !currentStatus.isPaused) {
-    statusDot.className = 'status-dot active';
-    statusText.textContent = 'Active';
+  // Status Styling
+  statusCard.className = 'status-card'; // reset
+  if (isActive && !isPaused) {
+    statusCard.classList.add('status-active');
+    statusText.textContent = 'Active Running';
+    
     toggleBtn.textContent = 'Stop';
-    toggleBtn.className = '';
-    pauseBtn.disabled = false;
+    toggleBtn.className = 'btn btn-danger';
+    
     pauseBtn.textContent = 'Pause';
-  } else if (currentStatus.isPaused) {
-    statusDot.className = 'status-dot paused';
+    pauseBtn.disabled = false;
+    
+  } else if (isPaused) {
+    statusCard.classList.add('status-paused');
     statusText.textContent = 'Paused';
+    
     toggleBtn.textContent = 'Stop';
-    toggleBtn.className = '';
-    pauseBtn.disabled = false;
+    toggleBtn.className = 'btn btn-danger';
+    
     pauseBtn.textContent = 'Resume';
+    pauseBtn.disabled = false;
+    
   } else {
-    statusDot.className = 'status-dot inactive';
+    statusCard.classList.add('status-inactive');
     statusText.textContent = 'Inactive';
-    toggleBtn.textContent = 'Start';
-    toggleBtn.className = 'inactive';
-    pauseBtn.disabled = true;
+    
+    toggleBtn.textContent = 'Start Consumer';
+    toggleBtn.className = 'btn btn-primary';
+    
     pauseBtn.textContent = 'Pause';
+    pauseBtn.disabled = true;
   }
 
-  // Update settings
-  document.getElementById('intensitySelect').value = currentStatus.settings.intensity;
-  document.getElementById('engineSelect').value = currentStatus.settings.searchEngine;
+  // Stats
+  document.getElementById('totalQueries').textContent = statistics.totalQueries || 0;
+  document.getElementById('sessionQueries').textContent = statistics.queriesThisSession || 0;
 
-  // Update statistics
-  document.getElementById('totalQueries').textContent = currentStatus.statistics.totalQueries || 0;
-  document.getElementById('sessionQueries').textContent = currentStatus.statistics.queriesThisSession || 0;
-  
-  const sessionTime = Math.floor((Date.now() - currentStatus.statistics.sessionStartTime) / 60000);
-  document.getElementById('sessionTime').textContent = `${sessionTime}m`;
+  // Validating Inputs
+  // Only update if not focused to avoid overwriting user input
+  if (document.activeElement.id !== 'intensitySelect') {
+    document.getElementById('intensitySelect').value = settings.intensity;
+  }
+  if (document.activeElement.id !== 'engineSelect') {
+    document.getElementById('engineSelect').value = settings.searchEngine;
+  }
 }
 
-/**
- * Set up event listeners
- */
 function setupEventListeners() {
-  // Toggle button
+  // Theme
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+  // Toggle Start/Stop
   document.getElementById('toggleBtn').addEventListener('click', async () => {
     try {
-      const response = await browser.runtime.sendMessage({ type: 'toggle' });
+      await browser.runtime.sendMessage({ type: 'toggle' });
       await loadStatus();
-    } catch (error) {
-      console.error('Error toggling:', error);
-    }
+    } catch (e) { console.error(e); }
   });
 
-  // Pause button
+  // Pause/Resume
   document.getElementById('pauseBtn').addEventListener('click', async () => {
     try {
-      const newPausedState = !currentStatus.isPaused;
-      await browser.runtime.sendMessage({ 
-        type: 'pause',
-        paused: newPausedState
-      });
+      await browser.runtime.sendMessage({ type: 'pause' });
       await loadStatus();
-    } catch (error) {
-      console.error('Error pausing:', error);
+    } catch (e) { console.error(e); }
+  });
+
+  // Open Settings
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    if (browser.runtime.openOptionsPage) {
+      browser.runtime.openOptionsPage();
+    } else {
+      window.open(browser.runtime.getURL('options/options.html'));
     }
   });
 
-  // Intensity select
+  // Quick Settings Change
   document.getElementById('intensitySelect').addEventListener('change', async (e) => {
     try {
-      await browser.runtime.sendMessage({
-        type: 'updateSettings',
-        settings: { intensity: e.target.value }
+      await browser.runtime.sendMessage({ 
+        type: 'updateSettings', 
+        settings: { intensity: e.target.value } 
       });
-      await loadStatus();
-    } catch (error) {
-      console.error('Error updating intensity:', error);
-    }
+      // Don't need explicit loadStatus() as broadcast will trigger it
+    } catch (e) { console.error(e); }
   });
 
-  // Search engine select
   document.getElementById('engineSelect').addEventListener('change', async (e) => {
     try {
-      await browser.runtime.sendMessage({
-        type: 'updateSettings',
-        settings: { searchEngine: e.target.value }
+      await browser.runtime.sendMessage({ 
+        type: 'updateSettings', 
+        settings: { searchEngine: e.target.value } 
       });
-      await loadStatus();
-    } catch (error) {
-      console.error('Error updating search engine:', error);
-    }
+    } catch (e) { console.error(e); }
   });
-
-  // Options link
-  document.getElementById('optionsLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    browser.runtime.openOptionsPage();
-  });
-}
-
-/**
- * Refresh status periodically
- */
-function startStatusRefresh() {
-  setInterval(loadStatus, 2000); // Refresh every 2 seconds
 }

@@ -112,6 +112,42 @@ export class QueryGenerator {
           'free {entity} tutorial'
         ]
       },
+      gaming: {
+        enabled: true,
+        keywords: ['walkthrough', 'guide', 'review', 'best', 'release date', 'meta', 'tier list', 'builds', 'tips'],
+        entities: ['rpg', 'fps', 'mmo', 'console', 'pc', 'steam', 'controller', 'esports', 'streamer'],
+        templates: [
+          'best {entity} games 2024',
+          '{entity} {keyword}',
+          'top rated {entity}',
+          'how to play {entity}',
+          '{entity} beginners guide'
+        ]
+      },
+      finance: {
+        enabled: true,
+        keywords: ['invest', 'stock', 'price', 'market', 'crypto', 'savings', 'budget', 'tax', 'retirement'],
+        entities: ['bitcoin', 'etf', 'gold', 'real estate', 'insurance', 'credit card', 'loan', 'bank', 'interest rate'],
+        templates: [
+          '{entity} {keyword}',
+          'how to {keyword} in {entity}',
+          'current {entity} {keyword}',
+          'best {entity} for 2024',
+          '{entity} vs {entity}'
+        ]
+      },
+      hobbies: {
+        enabled: true,
+        keywords: ['diy', 'how to', 'ideas', 'projects', 'beginners', 'supplies', 'techniques', 'patterns', 'kits'],
+        entities: ['gardening', 'knitting', 'woodworking', 'painting', 'pottery', 'origami', 'photography', 'cooking', 'yoga'],
+        templates: [
+          '{entity} {keyword}',
+          'easy {entity} {keyword}',
+          '{entity} for beginners',
+          'best {entity} {keyword}',
+          'start {entity} hobby'
+        ]
+      },
       local: {
         enabled: true,
         keywords: ['near me', 'nearby', 'in', 'best', 'open now', 'hours', 'directions', 'phone number'],
