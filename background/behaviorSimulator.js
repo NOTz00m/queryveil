@@ -1,7 +1,6 @@
-/**
- * Behavioral Simulation Engine
- * Generates human-like timing patterns and session structures
- */
+// behavior simulation engine generates human-like timing patterns
+// and session structures using statistical distributions instead of
+// fixed intervals so the query schedule looks organic
 
 export class BehaviorSimulator {
   constructor() {
@@ -28,98 +27,79 @@ export class BehaviorSimulator {
     this.hourResetTime = state.hourResetTime || (Date.now() + 3600000);
   }
 
-  /**
-   * Get next query time based on realistic human patterns
-   * @param {Object} settings - User settings
-   * @returns {number} Milliseconds until next query
-   */
+  // figure out when to fire the next query.
+  // custom rate mode uses even spacing with jitter,
+  // standard modes (low/medium/high) use session-based timing
   getNextQueryDelay(settings) {
     const now = Date.now();
-    
-    // Strict Custom Rate Logic
-    // If the user selects 'custom', we strictly obey the rate/hour they requested
-    // spreading it out evenly with minor jitter to look slightly organic.
+
+    // custom rate user specified exact queries/hour
+    // spread evenly with 20% jitter so it's not a perfect metronome
     if (settings.intensity === 'custom' && settings.customRate) {
       const targetRatePerHour = Math.max(1, Math.min(60, settings.customRate));
       const intervalMs = 3600000 / targetRatePerHour;
-      
-      // Add +/- 20% jitter
-      const jitter = intervalMs * 0.2; 
+      const jitter = intervalMs * 0.2;
       const actualDelay = intervalMs + this.normalRandom(-jitter, jitter);
-      
-      return Math.max(5000, actualDelay); // Minimum 5s
+      return Math.max(5000, actualDelay);
     }
 
-    // Standard Human-Like Session Logic (Low/Medium/High)
-    // ... existing session logic ...
-    
-    // Reset hourly counter
+    // reset hourly counter if the window has elapsed
     if (now > this.hourResetTime) {
       this.queriesThisHour = 0;
       this.hourResetTime = now + 3600000;
     }
 
-    // Check if we need to start a new session
+    // start a new session if the current one is done
     if (!this.currentSession || this.currentSession.queriesRemaining <= 0) {
       return this.startNewSession(settings);
     }
 
-    // Within-session delay (shorter, more focused)
+    // within an active session shorter, more focused delays
     return this.getWithinSessionDelay(settings);
   }
 
-  /**
-   * Start a new search session with realistic inter-session gap
-   * @param {Object} settings
-   * @returns {number} Milliseconds until session starts
-   */
+  // start a new search session with a realistic gap before it begins
+  // real users don't search constantly they have bursts of
+  // 2-8 related searches separated by longer idle periods
   startNewSession(settings) {
-    // Calculate intensity multiplier
     const multiplier = this.getIntensityMultiplier(settings.intensity, settings.customRate);
-    
-    // Inter-session gap:
-    // Base scale 30min (1800000ms).
-    // Adjusted by intensity: High intensity needs much frequent sessions.
-    // For high intensity (1.8x), we want gap to be much shorter.
-    // Let's divide scale by multiplier^2 to make it more aggressive.
-    const baseScale = 1800000;
-    const adjustedScale = baseScale / (multiplier * multiplier); 
 
-    const sessionGap = this.gammaRandom(2, adjustedScale); 
-    
-    // Session will have 2-8 related queries
+    // base gap is 30 minutes, scaled down by intensity squared
+    // so high intensity gets much more frequent sessions
+    const baseScale = 1800000;
+    const adjustedScale = baseScale / (multiplier * multiplier);
+    const sessionGap = this.gammaRandom(2, adjustedScale);
+
+    // sessions have 2-8 related queries, centered around 4
     const sessionLength = Math.floor(this.normalRandom(4, 2));
     const queriesInSession = Math.max(2, Math.min(8, sessionLength));
-    
+
     this.currentSession = {
       queriesRemaining: queriesInSession,
-      topic: null, // Will be set by query generator
+      topic: null, // set by query generator when the first query fires
       startTime: Date.now() + sessionGap
     };
 
     return sessionGap;
   }
 
-  /**
-   * Get delay between queries within the same session
-   * @param {Object} settings
-   * @returns {number} Milliseconds until next query
-   */
+  // delay between queries within the same session.
+  // these are shorter (1-5 min) because it simulates someone
+  // actively researching a topic and refining their searches
   getWithinSessionDelay(settings) {
-    // Within-session: 1-5 minutes using Exponential distribution
-    const baseDelay = this.exponentialRandom(180000); // mean = 3 minutes
-    
-    // Add jitter using normal distribution
-    const jitter = this.normalRandom(0, 30000); // ±30 seconds
-    
-    // Time-of-day weighting
+    // exponential distribution with 3 minute mean
+    const baseDelay = this.exponentialRandom(180000);
+
+    // gaussian jitter ±30s
+    const jitter = this.normalRandom(0, 30000);
+
+    // time-of-day weighting — search less during sleep hours
     const timeWeight = this.getTimeOfDayWeight();
-    
-    // Adjust based on intensity setting
+
     const intensityMultiplier = this.getIntensityMultiplier(settings.intensity, settings.customRate);
-    
+
     const totalDelay = Math.max(
-      60000, // Minimum 1 minute between queries
+      60000, // hard floor: 1 minute between queries minimum
       (baseDelay + jitter) * timeWeight / intensityMultiplier
     );
 
@@ -127,109 +107,75 @@ export class BehaviorSimulator {
     return totalDelay;
   }
 
-  /**
-   * Weight queries based on time of day (humans search more during waking hours)
-   * @returns {number} Multiplier for delay (higher = longer delay = fewer queries)
-   */
+  // returns a multiplier for delay based on time of day.
+  // higher value = longer delay = fewer queries.
+  // models the fact that humans don't search at 3am (usually)
   getTimeOfDayWeight() {
     const hour = new Date().getHours();
-    
-    // Very low activity 12am-6am (sleep hours)
-    if (hour >= 0 && hour < 6) return 4.0;
-    
-    // Morning ramp-up 6am-9am
-    if (hour >= 6 && hour < 9) return 1.5;
-    
-    // Peak hours 9am-11pm
-    if (hour >= 9 && hour < 23) return 1.0;
-    
-    // Evening wind-down 11pm-12am
-    return 2.0;
+
+    if (hour >= 0 && hour < 6) return 4.0;   // 12am-6am: sleep
+    if (hour >= 6 && hour < 9) return 1.5;   // 6am-9am: waking up
+    if (hour >= 9 && hour < 23) return 1.0;  // 9am-11pm: peak activity
+    return 2.0;                               // 11pm-12am: winding down
   }
 
-  /**
-   * Convert intensity setting to multiplier
-   * @param {string} intensity - 'low', 'medium', 'high', 'custom'
-   * @param {number} customRate - Custom queries per hour (if intensity is 'custom')
-   * @returns {number}
-   */
+  // convert intensity setting to a numeric multiplier.
+  // medium is the baseline (1.0), low is half, high is nearly double
   getIntensityMultiplier(intensity, customRate = null) {
-    // If custom intensity with a rate, calculate multiplier based on medium (12/hour)
     if (intensity === 'custom' && customRate) {
       return customRate / 12.0;
     }
-    
+
     const multipliers = {
-      'low': 0.5,    // 6 queries/hour max
-      'medium': 1.0,  // 12 queries/hour max
-      'high': 1.8,    // 20 queries/hour max
-      'custom': 1.0   // Default if no custom rate specified
+      'low': 0.5,     // ~6 queries/hour
+      'medium': 1.0,  // ~12 queries/hour
+      'high': 1.8,    // ~20 queries/hour
+      'custom': 1.0
     };
     return multipliers[intensity] || 1.0;
   }
 
-  /**
-   * Check if we should execute a query now based on rate limiting
-   * @param {string} intensity
-   * @param {number} customRate - Custom queries per hour (if intensity is 'custom')
-   * @returns {boolean}
-   */
+  // rate limiter prevents exceeding the max queries per hour
+  // for the current intensity level
   canExecuteQuery(intensity, customRate = null) {
-    // If custom intensity, use the custom rate
     if (intensity === 'custom' && customRate) {
       return this.queriesThisHour < customRate;
     }
-    
+
     const maxQueries = {
       'low': 6,
       'medium': 12,
       'high': 20,
-      'custom': 12  // Default if no custom rate specified
+      'custom': 12
     };
-    
+
     return this.queriesThisHour < (maxQueries[intensity] || 12);
   }
 
-  /**
-   * Record that a query was executed
-   */
   recordQuery() {
     this.queriesThisHour++;
     this.lastQueryTime = Date.now();
   }
 
-  /**
-   * Should we mix query with user's active browsing?
-   * @param {string} userState - 'active', 'idle', 'locked'
-   * @returns {boolean}
-   */
+  // decide whether to fire during active vs idle browsing.
+  // real humans search during both states, but more during active
   shouldMixWithActivity(userState) {
     if (userState === 'locked') return false;
-    
-    // 70% chance to execute during active browsing
-    // 30% chance to execute during idle (humans search when "idle" too)
     const threshold = userState === 'active' ? 0.7 : 0.3;
     return Math.random() < threshold;
   }
 
-  // Statistical distribution helpers
+  // --- statistical distributions ---
+  // these are the core of making timing look human.
+  // fixed intervals are trivially detectable; proper distributions aren't.
 
-  /**
-   * Generate random number from exponential distribution
-   * @param {number} mean
-   * @returns {number}
-   */
+  // exponential distribution memoryless wait times
   exponentialRandom(mean) {
     return -Math.log(1 - Math.random()) * mean;
   }
 
-  /**
-   * Generate random number from normal (Gaussian) distribution
-   * Using Box-Muller transform
-   * @param {number} mean
-   * @param {number} stdDev
-   * @returns {number}
-   */
+  // normal (gaussian) distribution via box-muller transform
+  // used for jitter and session length randomization
   normalRandom(mean, stdDev) {
     const u1 = Math.random();
     const u2 = Math.random();
@@ -237,20 +183,15 @@ export class BehaviorSimulator {
     return z0 * stdDev + mean;
   }
 
-  /**
-   * Generate random number from Gamma distribution
-   * Using Marsaglia and Tsang's method
-   * @param {number} shape - Shape parameter (α)
-   * @param {number} scale - Scale parameter (β)
-   * @returns {number}
-   */
+  // gamma distribution marsaglia and tsang's method
+  // used for inter-session gaps gives a natural "bursty" pattern
+  // where most gaps are moderate but occasionally there's a long one
   gammaRandom(shape, scale) {
-    // Simplified gamma for shape=2 (Erlang distribution)
     if (shape === 2) {
+      // erlang-2: sum of two exponentials (exact)
       return -scale * (Math.log(Math.random()) + Math.log(Math.random()));
     }
-    
-    // For other shapes, use simpler approximation
+
     let sum = 0;
     for (let i = 0; i < shape; i++) {
       sum += this.exponentialRandom(1);
@@ -258,66 +199,41 @@ export class BehaviorSimulator {
     return sum * scale;
   }
 
-  /**
-   * Get query complexity based on realistic distribution
-   * @returns {string} 'short', 'medium', 'long', 'very_long'
-   */
+  // pick query complexity based on how real search queries are distributed.
+  // most searches are 3-5 words (medium), very few are full sentences
   getQueryComplexity() {
     const rand = Math.random();
-    
     if (rand < 0.30) return 'short';      // 30%: 1-2 words
     if (rand < 0.80) return 'medium';     // 50%: 3-5 words
     if (rand < 0.95) return 'long';       // 15%: 6-10 words
     return 'very_long';                    // 5%: questions/sentences
   }
 
-  /**
-   * Should we simulate a typo in this query?
-   * @returns {boolean}
-   */
+  // ~1.5% of queries get a typo matches real human error rate
   shouldAddTypo() {
-    return Math.random() < 0.015; // 1.5% of queries
+    return Math.random() < 0.015;
   }
 
-  /**
-   * Should we simulate clicking on a result?
-   * @returns {boolean}
-   */
+  // ~40% of searches result in clicking a result
   shouldClickResult() {
-    return Math.random() < 0.40; // 40% of queries
+    return Math.random() < 0.40;
   }
 
-  /**
-   * Get realistic dwell time on result page (milliseconds)
-   * @returns {number}
-   */
+  // how long someone stays on a result page before bouncing.
+  // most visits are quick scans (5-15s), some are medium reads,
+  // rare ones are deep dives
   getResultDwellTime() {
     const rand = Math.random();
-    
-    if (rand < 0.70) {
-      // Quick exit: 5-15 seconds
-      return this.normalRandom(10000, 3000);
-    } else if (rand < 0.95) {
-      // Medium stay: 15-60 seconds
-      return this.normalRandom(37500, 15000);
-    } else {
-      // Long stay: 60-180 seconds
-      return this.normalRandom(120000, 40000);
-    }
+    if (rand < 0.70) return this.normalRandom(10000, 3000);     // quick: 5-15s
+    if (rand < 0.95) return this.normalRandom(37500, 15000);    // medium: 15-60s
+    return this.normalRandom(120000, 40000);                     // deep: 60-180s
   }
 
-  /**
-   * Should we do a follow-up refinement search?
-   * @returns {boolean}
-   */
+  // ~10% of searches get refined (adding "reddit", year, etc.)
   shouldRefineSearch() {
-    return Math.random() < 0.10; // 10% of searches get refined
+    return Math.random() < 0.10;
   }
 
-  /**
-   * Get current session info
-   * @returns {Object}
-   */
   getSessionInfo() {
     return this.currentSession;
   }

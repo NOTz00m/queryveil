@@ -1,29 +1,51 @@
-import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerator } from './queryGenerator.js';import { AntiDetection } from './antiDetection.js';const browser = globalThis.browser || globalThis.chrome;class QueryVeilService {  constructor() {    this.behaviorSim = new BehaviorSimulator();    this.queryGen = new QueryGenerator();    this.antiDetect = new AntiDetection();        this.settings = null;    this.ALARM_NAME = 'queryVeilScheduler';        // Initialize settings immediately when the script loads
+import { BehaviorSimulator } from './behaviorSimulator.js';
+import { QueryGenerator } from './queryGenerator.js';
+import { AntiDetection } from './antiDetection.js';
+import { PersonaEngine } from './personaEngine.js';
+import { TrendProvider } from './trendProvider.js';
+import { PrivacyScore } from './privacyScore.js';
+
+const browser = globalThis.browser || globalThis.chrome;
+
+class QueryVeilService {
+  constructor() {
+    this.behaviorSim = new BehaviorSimulator();
+    this.queryGen = new QueryGenerator();
+    this.antiDetect = new AntiDetection();
+    this.personaEngine = new PersonaEngine();
+    this.trendProvider = new TrendProvider();
+    this.privacyScore = new PrivacyScore();
+
+    this.settings = null;
+    this.ALARM_NAME = 'queryVeilScheduler';
+
+    // load settings immediately so we're ready when alarms fire
     this.initializationPromise = this.loadSettings();
   }
 
-  // Called on runtime.onInstalled and runtime.onStartup
+  // called on install, update, and browser startup
   async init(reason) {
-    console.log('[QueryVeil] Service Worker Initializing... Reason:', reason);
+    console.log('[QueryVeil] initializing, reason:', reason);
     await this.initializationPromise;
 
-    // Reset session stats on startup
+    // initialize trend cache from storage
+    await this.trendProvider.init();
+
+    // reset session stats on startup
     if (reason === 'startup') {
-        const stats = await this.getStatistics();
-        stats.queriesThisSession = 0;
-        stats.sessionStartTime = Date.now();
-        await browser.storage.local.set({ statistics: stats });
+      const stats = await this.getStatistics();
+      stats.queriesThisSession = 0;
+      stats.sessionStartTime = Date.now();
+      await browser.storage.local.set({ statistics: stats });
     }
 
-    this.updateBadge(); // Ensure badge is correct
-    
-    // Ensure alarm state is correct (resume if needed)
+    this.updateBadge();
+
+    // make sure the alarm is running if we're supposed to be active
     if (this.settings.enabled && !this.settings.paused) {
       const alarm = await browser.alarms.get(this.ALARM_NAME);
-      
-      // If installing/updating or missing alarm, schedule
       if (!alarm || reason === 'install') {
-        if (reason === 'install') console.log('[QueryVeil] Fresh install/update - rescheduling');
+        if (reason === 'install') console.log('[QueryVeil] fresh install/update — rescheduling');
         this.scheduleNextRun();
       }
     }
@@ -37,22 +59,25 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
       } else {
         await browser.action.setBadgeText({ text: '' });
       }
-    } catch (e) { console.error('Badge update failed', e); }
+    } catch (e) {
+      console.error('badge update failed', e);
+    }
   }
 
   async broadcastStatus() {
     try {
       const stats = await this.getStatistics();
-      // Using catch because sendMessage throws if no receivers are open
-      await browser.runtime.sendMessage({ 
+      const scoreData = this.privacyScore.calculate(this.settings, stats);
+      await browser.runtime.sendMessage({
         type: 'statusUpdated',
         isActive: this.settings?.enabled ?? false,
         isPaused: this.settings?.paused ?? false,
         settings: this.settings,
-        statistics: stats
-      }).catch(() => {}); 
+        statistics: stats,
+        privacyScore: scoreData
+      }).catch(() => {});
     } catch (e) {
-      // Ignore connection errors
+      // no receivers open, that's fine
     }
   }
 
@@ -60,25 +85,23 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
     try {
       const result = await browser.storage.local.get(['settings', 'statistics', 'simulatorState']);
       this.settings = result.settings || this.getDefaultSettings();
-      
-      // Ensure specific defaults exist (migration)
+
+      // merge in any new default keys (handles upgrades gracefully)
       const defaults = this.getDefaultSettings();
       this.settings = { ...defaults, ...this.settings };
       this.settings.topics = { ...defaults.topics, ...(this.settings.topics || {}) };
       this.settings.schedule = { ...defaults.schedule, ...(this.settings.schedule || {}) };
 
-      // Apply topic settings to query generator
       if (this.settings.topics) {
         this.queryGen.updateTopicSettings(this.settings.topics);
       }
 
-      // Restore behavior simulator state
       if (result.simulatorState) {
         this.behaviorSim.setState(result.simulatorState);
       }
 
     } catch (error) {
-      console.error('[QueryVeil] Error loading settings:', error);
+      console.error('[QueryVeil] error loading settings:', error);
       this.settings = this.getDefaultSettings();
     }
     return this.settings;
@@ -86,10 +109,10 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
 
   async saveState() {
     try {
-        const state = this.behaviorSim.getState();
-        await browser.storage.local.set({ simulatorState: state });
+      const state = this.behaviorSim.getState();
+      await browser.storage.local.set({ simulatorState: state });
     } catch (e) {
-        console.error('[QueryVeil] Failed to save state:', e);
+      console.error('[QueryVeil] failed to save state:', e);
     }
   }
 
@@ -98,9 +121,12 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
       enabled: false,
       paused: false,
       intensity: 'medium',
-      customRate: 12, // Queries per hour
+      customRate: 12,
       searchEngine: 'google',
       enableResultClicks: false,
+      enableAutosuggest: false,
+      enableTrends: true,
+      persona: 'none',
       debugMode: false,
       schedule: {
         enabled: false,
@@ -120,32 +146,34 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
         finance: true,
         hobbies: true,
         local: true,
-        general: true
+        general: true,
+        automotive: true,
+        pets: true,
+        realestate: true,
+        careers: true,
+        parenting: true,
+        science: true,
+        sports: true
       }
     };
   }
 
   setupListeners() {
-    // Alarm listener
     browser.alarms.onAlarm.addListener(async (alarm) => {
-      // Ensure settings loaded before processing alarm
       await this.initializationPromise;
       if (alarm.name === this.ALARM_NAME) {
         await this.handleAlarm();
       }
     });
 
-    // Message listener
     browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      // Must return true to keep channel open
       this.processMessage(message, sendResponse);
-      return true; 
+      return true; // keep the channel open for async response
     });
 
-    // Storage change listener
     browser.storage.onChanged.addListener(async (changes, area) => {
       if (area === 'local' && changes.settings) {
-        await this.initializationPromise; // Ensure we don't overwrite with null
+        await this.initializationPromise;
         this.settings = changes.settings.newValue;
         this.queryGen.updateTopicSettings(this.settings.topics);
         this.handleSettingsChange();
@@ -153,64 +181,80 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
     });
   }
 
-  // Wrapper to handle async message processing
   async processMessage(message, sendResponse) {
     try {
       await this.initializationPromise;
-      
+
       switch (message.type) {
-        case 'getStatus':
-            const stats = await this.getStatistics();
-            sendResponse({ 
-                isActive: this.settings?.enabled ?? false,
-                isPaused: this.settings?.paused ?? false,
-                settings: this.settings,
-                statistics: stats
-            });
-            break;
+        case 'getStatus': {
+          const stats = await this.getStatistics();
+          const scoreData = this.privacyScore.calculate(this.settings, stats);
+          sendResponse({
+            isActive: this.settings?.enabled ?? false,
+            isPaused: this.settings?.paused ?? false,
+            settings: this.settings,
+            statistics: stats,
+            privacyScore: scoreData
+          });
+          break;
+        }
         case 'toggle':
-            this.settings.enabled = !this.settings.enabled;
-            if (!this.settings.enabled) {
-                this.settings.paused = false; 
-                await browser.alarms.clear(this.ALARM_NAME);
-            }
-            await this.saveSettings();
-            sendResponse({ success: true, enabled: this.settings.enabled });
-            break;
+          this.settings.enabled = !this.settings.enabled;
+          if (!this.settings.enabled) {
+            this.settings.paused = false;
+            await browser.alarms.clear(this.ALARM_NAME);
+          }
+          await this.saveSettings();
+          sendResponse({ success: true, enabled: this.settings.enabled });
+          break;
+
         case 'pause':
-            this.settings.paused = message.paused !== undefined ? message.paused : !this.settings.paused;
-            await this.saveSettings(); // saveSettings calls broadcastStatus
-            sendResponse({ success: true, paused: this.settings.paused });
-            break;
+          this.settings.paused = message.paused !== undefined ? message.paused : !this.settings.paused;
+          await this.saveSettings();
+          sendResponse({ success: true, paused: this.settings.paused });
+          break;
+
         case 'updateSettings':
-            this.settings = { ...this.settings, ...message.settings };
-            await this.saveSettings();
-            sendResponse({ success: true });
-            break;
-        case 'getStats':
-             const s = await this.getStatistics();
-             sendResponse(s);
-             break;
+          this.settings = { ...this.settings, ...message.settings };
+          await this.saveSettings();
+          sendResponse({ success: true });
+          break;
+
+        case 'getStats': {
+          const s = await this.getStatistics();
+          sendResponse(s);
+          break;
+        }
+        case 'getPrivacyScore': {
+          const stats = await this.getStatistics();
+          const scoreData = this.privacyScore.calculate(this.settings, stats);
+          sendResponse(scoreData);
+          break;
+        }
+        case 'getPersonas':
+          sendResponse({ personas: this.personaEngine.getPersonaList() });
+          break;
+
         case 'panic':
-            this.handlePanic();
-            sendResponse({ success: true });
-            break;
+          this.handlePanic();
+          sendResponse({ success: true });
+          break;
+
         default:
-            // Unknown message
-            sendResponse({ success: false, error: 'Unknown message type' });
+          sendResponse({ success: false, error: 'unknown message type' });
       }
     } catch (error) {
-       console.error('[QueryVeil] Message processing error:', error);
-       sendResponse({ success: false, error: error.toString() });
+      console.error('[QueryVeil] message processing error:', error);
+      sendResponse({ success: false, error: error.toString() });
     }
   }
 
   async handleAlarm() {
-    if (!this.settings.enabled) return; 
+    if (!this.settings.enabled) return;
     if (this.settings.paused) return;
 
     if (this.shouldPauseForSchedule()) {
-      if (this.settings.debugMode) console.log('[QueryVeil] Paused by schedule');
+      if (this.settings.debugMode) console.log('[QueryVeil] paused by schedule');
       browser.alarms.create(this.ALARM_NAME, { delayInMinutes: 30 });
       return;
     }
@@ -221,11 +265,10 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
 
   shouldPauseForSchedule() {
     if (!this.settings.schedule?.enabled) return false;
-    
     const hour = new Date().getHours();
     const start = this.settings.schedule.startHour;
     const end = this.settings.schedule.endHour;
-    
+
     if (start < end) {
       return hour < start || hour >= end;
     } else {
@@ -237,9 +280,9 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
     const delayMs = this.behaviorSim.getNextQueryDelay(this.settings);
     const delayMinutes = delayMs / 60000;
     const safeDelay = Math.max(0.1, delayMinutes);
-    
+
     if (this.settings.debugMode) {
-      console.log(`[QueryVeil] Next query in ${safeDelay.toFixed(2)} minutes`);
+      console.log(`[QueryVeil] next query in ${safeDelay.toFixed(2)} minutes`);
     }
     browser.alarms.create(this.ALARM_NAME, { delayInMinutes: safeDelay });
     this.saveState();
@@ -248,45 +291,60 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
   async executeQuery() {
     const complexity = this.behaviorSim.getQueryComplexity();
     const sessionInfo = this.behaviorSim.getSessionInfo();
-    const query = this.queryGen.generateQuery(complexity, this.settings, sessionInfo);
+
+    // get persona config (null if persona is 'none')
+    const persona = this.personaEngine.getActivePersona(this.settings);
+
+    // get trending topics if trends are enabled
+    let trends = [];
+    if (this.settings.enableTrends) {
+      trends = await this.trendProvider.getTrendingTopics();
+    }
+
+    const query = this.queryGen.generateQuery(complexity, this.settings, sessionInfo, persona, trends);
 
     if (this.settings.debugMode) {
-      console.log(`[QueryVeil] Executing: "${query}" on ${this.settings.searchEngine}`);
+      console.log(`[QueryVeil] executing: "${query}" on ${this.settings.searchEngine}${persona ? ` (persona: ${persona.name})` : ''}`);
     }
 
     try {
+      // simulate autosuggest typing if enabled
+      if (this.settings.enableAutosuggest) {
+        await this.antiDetect.simulateAutosuggest(this.settings.searchEngine, query);
+      }
+
       const result = await this.antiDetect.executeQuery(this.settings.searchEngine, query);
-      
+
       if (result.success) {
         this.updateStats();
         if (this.settings.enableResultClicks && this.behaviorSim.shouldClickResult()) {
-            if (this.settings.debugMode) console.log('[QueryVeil] Simulation: Would click result');
+          if (this.settings.debugMode) console.log('[QueryVeil] would click result (simulation)');
         }
       }
       this.broadcastStatus();
     } catch (e) {
-      if (this.settings.debugMode) console.error('[QueryVeil] Query execution failed', e);
+      if (this.settings.debugMode) console.error('[QueryVeil] query execution failed', e);
     }
   }
 
   async updateStats() {
     const data = await browser.storage.local.get('statistics');
     const stats = data.statistics || { totalQueries: 0, queriesThisSession: 0 };
-    
+
     stats.totalQueries++;
     stats.queriesThisSession++;
     stats.lastQueryTime = Date.now();
-    
+
     await browser.storage.local.set({ statistics: stats });
     this.broadcastStatus();
   }
 
   handleSettingsChange() {
-    if (this.settings.debugMode) console.log('[QueryVeil] Settings changed, re-evaluating schedule');
+    if (this.settings.debugMode) console.log('[QueryVeil] settings changed, rescheduling');
     browser.alarms.clear(this.ALARM_NAME);
-    
-    this.updateBadge(); // Update badge
-    this.broadcastStatus(); // Notify UI
+
+    this.updateBadge();
+    this.broadcastStatus();
 
     if (this.settings.enabled && !this.settings.paused) {
       this.scheduleNextRun();
@@ -305,7 +363,7 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
   }
 
   handlePanic() {
-    console.warn('[QueryVeil] PANIC TRIGGERED');
+    console.warn('[QueryVeil] PANIC — killing everything');
     this.settings.enabled = false;
     this.settings.paused = false;
     this.saveSettings();
@@ -313,9 +371,8 @@ import { BehaviorSimulator } from './behaviorSimulator.js';import { QueryGenerat
   }
 }
 
-// Initialize the service instance
+// boot up
 const service = new QueryVeilService();
-service.setupListeners(); // Listeners must be synchronous to Register
+service.setupListeners();
 browser.runtime.onInstalled.addListener(() => service.init('install'));
 browser.runtime.onStartup.addListener(() => service.init('startup'));
-

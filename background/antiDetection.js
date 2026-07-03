@@ -1,7 +1,8 @@
-/**
- * Anti-Detection Layer
- * Ensures queries are indistinguishable from real human searches
- */
+// anti-detection layer makes generated queries indistinguishable
+// from real human searches handles request headers, rate limiting,
+// backoff on failures, and optional autosuggest simulation
+
+const browser = globalThis.browser || globalThis.chrome;
 
 export class AntiDetection {
   constructor() {
@@ -10,22 +11,18 @@ export class AntiDetection {
     this.backoffMultiplier = 1;
   }
 
-  /**
-   * Get realistic referrer header
-   * @param {string} searchEngine
-   * @returns {string}
-   */
+  // pick a realistic referrer for the search request
+  // distribution matches how real users actually arrive at search engines
+  // most type the url or use a bookmark, some come from a previous search,
+  // a few come from news/social links
   getReferrer(searchEngine) {
     const rand = Math.random();
-    
+
     if (rand < 0.60) {
-      // Direct navigation (typed URL or bookmark)
       return this.getSearchEngineHomepage(searchEngine);
     } else if (rand < 0.85) {
-      // From same search engine (previous search)
       return `${this.getSearchEngineHomepage(searchEngine)}/search?q=previous+query`;
     } else if (rand < 0.95) {
-      // From news sites
       const newsSites = [
         'https://news.google.com/',
         'https://www.bbc.com/news',
@@ -35,7 +32,6 @@ export class AntiDetection {
       ];
       return this.randomElement(newsSites);
     } else {
-      // From social media
       const socialSites = [
         'https://twitter.com/',
         'https://www.reddit.com/',
@@ -46,11 +42,6 @@ export class AntiDetection {
     }
   }
 
-  /**
-   * Get search engine homepage
-   * @param {string} searchEngine
-   * @returns {string}
-   */
   getSearchEngineHomepage(searchEngine) {
     const homepages = {
       'google': 'https://www.google.com',
@@ -60,65 +51,66 @@ export class AntiDetection {
     return homepages[searchEngine] || 'https://www.google.com';
   }
 
-  /**
-   * Build search URL with proper encoding
-   * @param {string} searchEngine
-   * @param {string} query
-   * @returns {string}
-   */
   buildSearchURL(searchEngine, query) {
     const encodedQuery = encodeURIComponent(query);
-    
     const urls = {
       'google': `https://www.google.com/search?q=${encodedQuery}`,
       'bing': `https://www.bing.com/search?q=${encodedQuery}`,
       'duckduckgo': `https://duckduckgo.com/?q=${encodedQuery}`
     };
-    
     return urls[searchEngine] || urls['google'];
   }
 
-  /**
-   * Get realistic request headers that match normal browser behavior
-   * @param {string} referrer
-   * @returns {Object}
-   */
+  // get the autocomplete/suggest endpoint url for each search engine
+  // these are the same endpoints the browser hits when you type
+  // in the search box using them makes our queries look typed
+  getSuggestURL(searchEngine, partialQuery) {
+    const encoded = encodeURIComponent(partialQuery);
+    const urls = {
+      'google': `https://www.google.com/complete/search?q=${encoded}&client=gws-wiz`,
+      'bing': `https://www.bing.com/AS/Suggestions?qry=${encoded}&cvid=${this.randomCvid()}`,
+      'duckduckgo': `https://duckduckgo.com/ac/?q=${encoded}&type=list`
+    };
+    return urls[searchEngine] || urls['google'];
+  }
+
+  // random bing cvid parameter bing uses this as a conversation id
+  // for suggest requests just needs to look like a hex string
+  randomCvid() {
+    const chars = '0123456789ABCDEF';
+    let result = '';
+    for (let i = 0; i < 32; i++) {
+      result += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return result;
+  }
+
+  // minimal headers that match normal browser behavior.
+  // we intentionally don't set sec-fetch-* because those are
+  // handled by the browser automatically and setting them manually
+  // can actually look suspicious
   getHeaders(referrer) {
-    // Use minimal headers - let browser handle most automatically
-    // This ensures consistency with real browsing
     const headers = {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.5',
       'DNT': '1',
       'Upgrade-Insecure-Requests': '1',
-      // 'Sec-Fetch-*' headers are forbidden in fetch() and handled by browser
       'Cache-Control': 'max-age=0'
     };
 
     if (referrer) {
-      // Note: setting Referer manually in fetch is sometimes restricted, 
-      // but commonly allowed in extensions depending on permissions.
-      // Ideally handled via declarativeNetRequest if modifying outgoing.
-      // For simple fetch, we try, but browser might override.
       headers['Referer'] = referrer;
     }
 
     return headers;
   }
 
-  /**
-   * Determine Sec-Fetch-Site based on referrer
-   * @param {string} referrer
-   * @returns {string}
-   */
   getSecFetchSite(referrer) {
     if (!referrer) return 'none';
-    
     try {
       const referrerDomain = new URL(referrer).hostname;
-      // If referrer is same as search engine, it's same-origin
-      if (referrerDomain.includes('google.com') || 
-          referrerDomain.includes('bing.com') || 
+      if (referrerDomain.includes('google.com') ||
+          referrerDomain.includes('bing.com') ||
           referrerDomain.includes('duckduckgo.com')) {
         return 'same-origin';
       }
@@ -128,13 +120,72 @@ export class AntiDetection {
     }
   }
 
-  /**
-   * Execute search query with anti-detection measures
-   * @param {string} searchEngine
-   * @param {string} query
-   * @param {Object} options
-   * @returns {Promise<Object>}
-   */
+  // simulate the autosuggest/autocomplete requests that happen when
+  // a real user types a query character by character in the search box
+  // without this queries appear "out of nowhere" with no prior suggest
+  // traffic which is a detectable signal
+  // fires 3-6 prefix requests with realistic inter-keystroke timing
+  // then returns the actual search query fires after this
+  async simulateAutosuggest(searchEngine, query) {
+    const words = query.split(' ');
+    if (words.length === 0) return;
+
+    // pick 3-6 incremental prefixes of the query to simulate typing.
+    // we don't send every single character — real autocomplete
+    // doesn't fire on every keystroke either, it debounces
+    const prefixes = this.generateTypingPrefixes(query);
+
+    for (const prefix of prefixes) {
+      const suggestUrl = this.getSuggestURL(searchEngine, prefix);
+
+      try {
+        await fetch(suggestUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json, text/javascript, */*; q=0.01',
+            'Accept-Language': 'en-US,en;q=0.5'
+          },
+          credentials: 'include',
+          cache: 'no-store'
+        });
+      } catch (e) {
+        // suggest request failed just skip it
+        // the real search will still fire
+      }
+
+      // inter-keystroke delay 80-250ms with occasional longer pauses
+      // simulates thinking or reading suggestions
+      const baseDelay = 80 + Math.random() * 170;
+      const thinkPause = Math.random() < 0.3 ? (300 + Math.random() * 700) : 0;
+      await this.delay(baseDelay + thinkPause);
+    }
+  }
+
+  // generate realistic typing prefixes for autosuggest simulation.
+  // humans don't type one char at a time they type in bursts,
+  // and autocomplete fires after debounce periods.
+  // we simulate 3-6 checkpoints through the query string
+  generateTypingPrefixes(query) {
+    const prefixes = [];
+    const len = query.length;
+    if (len < 3) return [query];
+
+    // number of suggest requests: 3-6, proportional to query length
+    const numPrefixes = Math.min(6, Math.max(3, Math.floor(len / 4)));
+
+    for (let i = 1; i <= numPrefixes; i++) {
+      // distribute checkpoints through the string with some randomness
+      const targetPos = Math.floor((len * i) / (numPrefixes + 1));
+      // add ±1 char of jitter so it's not perfectly evenly spaced
+      const jitter = Math.floor(Math.random() * 3) - 1;
+      const pos = Math.max(2, Math.min(len, targetPos + jitter));
+      prefixes.push(query.substring(0, pos));
+    }
+
+    return prefixes;
+  }
+
+  // execute the actual search query with anti-detection measures
   async executeQuery(searchEngine, query, options = {}) {
     const referrer = this.getReferrer(searchEngine);
     const url = this.buildSearchURL(searchEngine, query);
@@ -144,24 +195,21 @@ export class AntiDetection {
       const response = await fetch(url, {
         method: 'GET',
         headers: headers,
-        credentials: 'include', // Include cookies like normal browsing
+        credentials: 'include',
         cache: 'default',
         redirect: 'follow'
       });
 
-      // Handle rate limiting
       if (response.status === 429) {
         this.handleRateLimit();
         throw new Error('Rate limited');
       }
 
-      // Handle other errors
       if (!response.ok) {
         this.handleFailure();
         throw new Error(`HTTP ${response.status}`);
       }
 
-      // Success - reset failure tracking
       this.resetFailureTracking();
 
       return {
@@ -179,19 +227,12 @@ export class AntiDetection {
     }
   }
 
-  /**
-   * Simulate clicking on a search result
-   * @param {string} resultURL
-   * @param {string} searchURL
-   * @param {number} dwellTime
-   * @returns {Promise<Object>}
-   */
+  // simulate clicking a search result fetches the result page
+  // with the search engine as referrer, then waits (dwell time)
   async simulateResultClick(resultURL, searchURL, dwellTime) {
     try {
-      // Wait for "think time" before clicking
       await this.delay(this.getClickDelay());
 
-      // Fetch the result page with search engine as referrer
       const response = await fetch(resultURL, {
         method: 'GET',
         headers: {
@@ -210,7 +251,6 @@ export class AntiDetection {
         redirect: 'follow'
       });
 
-      // Simulate dwelling on the page
       await this.delay(dwellTime);
 
       return {
@@ -226,157 +266,94 @@ export class AntiDetection {
     }
   }
 
-  /**
-   * Get realistic delay before clicking a result (milliseconds)
-   * @returns {number}
-   */
+  // 2-8 seconds to scan results before clicking matches eye tracking studies
   getClickDelay() {
-    // Users take 2-8 seconds to scan results and click
     return 2000 + Math.random() * 6000;
   }
 
-  /**
-   * Select which result to "click" based on realistic patterns
-   * @returns {number} Position (1-10)
-   */
+  // which result position to click heavily favors top results
+  // 50% click #1, drops off exponentially from there
   getResultPosition() {
-    // Users heavily favor top results (exponential distribution)
     const rand = Math.random();
-    
-    if (rand < 0.50) return 1;  // 50% click first result
-    if (rand < 0.70) return 2;  // 20% click second
-    if (rand < 0.82) return 3;  // 12% click third
-    if (rand < 0.90) return 4;  // 8% click fourth
-    if (rand < 0.95) return 5;  // 5% click fifth
-    
-    // Remaining 5% distributed across positions 6-10
+    if (rand < 0.50) return 1;
+    if (rand < 0.70) return 2;
+    if (rand < 0.82) return 3;
+    if (rand < 0.90) return 4;
+    if (rand < 0.95) return 5;
     return Math.floor(Math.random() * 5) + 6;
   }
 
-  /**
-   * Handle rate limiting with exponential backoff
-   */
+  // exponential backoff on rate limiting doubles each time, caps at 8x
   handleRateLimit() {
-    console.log('[QueryVeil] Rate limit detected, applying backoff');
+    console.log('[QueryVeil] rate limit detected, backing off');
     this.backoffMultiplier = Math.min(this.backoffMultiplier * 2, 8);
     this.failureCount++;
     this.lastFailureTime = Date.now();
   }
 
-  /**
-   * Handle general query failure
-   */
   handleFailure() {
     this.failureCount++;
     this.lastFailureTime = Date.now();
-    
-    // If too many failures, increase backoff
     if (this.failureCount > 5) {
       this.backoffMultiplier = Math.min(this.backoffMultiplier * 1.5, 4);
     }
   }
 
-  /**
-   * Reset failure tracking after success
-   */
+  // gradually reduce backoff after successful queries
   resetFailureTracking() {
-    // Gradually reduce backoff
     if (this.backoffMultiplier > 1) {
       this.backoffMultiplier = Math.max(this.backoffMultiplier * 0.9, 1);
     }
-    
-    // Reset failure count if it's been a while
+    // reset failure count if it's been over an hour since last failure
     if (this.lastFailureTime && (Date.now() - this.lastFailureTime > 3600000)) {
       this.failureCount = 0;
     }
   }
 
-  /**
-   * Get current backoff multiplier for delay adjustments
-   * @returns {number}
-   */
   getBackoffMultiplier() {
     return this.backoffMultiplier;
   }
 
-  /**
-   * Check if we should pause due to too many failures
-   * @returns {boolean}
-   */
+  // pause if too many failures in the last hour
   shouldPause() {
-    // Pause if more than 10 failures in last hour
-    if (this.failureCount > 10 && 
-        this.lastFailureTime && 
+    if (this.failureCount > 10 &&
+        this.lastFailureTime &&
         (Date.now() - this.lastFailureTime < 3600000)) {
       return true;
     }
     return false;
   }
 
-  /**
-   * Check user's idle state to determine if we should query
-   * @returns {Promise<string>} 'active', 'idle', or 'locked'
-   */
   async getUserIdleState() {
     try {
-      // Query idle state (15 seconds threshold for "idle")
       const idleTime = await browser.idle.queryState(15);
-      return idleTime; // Returns 'active', 'idle', or 'locked'
+      return idleTime;
     } catch (error) {
-      // If idle API not available, assume active
       return 'active';
     }
   }
 
-  /**
-   * Delay helper
-   * @param {number} ms
-   * @returns {Promise}
-   */
   delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  /**
-   * Helper: Get random element from array
-   * @param {Array} array
-   * @returns {*}
-   */
   randomElement(array) {
     return array[Math.floor(Math.random() * array.length)];
   }
 
-  /**
-   * Generate realistic result URLs for simulation
-   * @param {string} query
-   * @param {number} position
-   * @returns {string}
-   */
+  // generate plausible result URLs for click simulation
   generateMockResultURL(query, position) {
-    // Generate plausible result URLs based on query topic
     const domains = [
-      'wikipedia.org',
-      'reddit.com',
-      'youtube.com',
-      'amazon.com',
-      'stackoverflow.com',
-      'medium.com',
-      'github.com',
-      'nytimes.com',
-      'bbc.com',
-      'cnn.com'
+      'wikipedia.org', 'reddit.com', 'youtube.com', 'amazon.com',
+      'stackoverflow.com', 'medium.com', 'github.com', 'nytimes.com',
+      'bbc.com', 'cnn.com'
     ];
-    
+
     const domain = this.randomElement(domains);
     const slug = query.toLowerCase().replace(/\s+/g, '-').substring(0, 50);
-    
     return `https://www.${domain}/${slug}`;
   }
 
-  /**
-   * Get statistics for monitoring
-   * @returns {Object}
-   */
   getStats() {
     return {
       failureCount: this.failureCount,

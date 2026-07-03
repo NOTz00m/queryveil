@@ -39,6 +39,21 @@
     <span id="statusText" class="status-text">Inactive</span>
   </div>
 
+  <!-- Privacy Score Ring -->
+  <div class="score-section">
+    <div class="score-ring-container">
+      <svg class="score-ring" viewBox="0 0 120 120">
+        <circle class="score-ring-bg" cx="60" cy="60" r="52" />
+        <circle id="scoreRingFill" class="score-ring-fill" cx="60" cy="60" r="52" />
+      </svg>
+      <div class="score-inner">
+        <div id="scoreGrade" class="score-grade">—</div>
+        <div id="scoreValue" class="score-value">0</div>
+      </div>
+    </div>
+    <div class="score-label">obfuscation estimate</div>
+  </div>
+
   <div class="controls-row">
     <button id="toggleBtn" class="btn btn-primary">Start</button>
     <button id="pauseBtn" class="btn btn-warning" disabled>Pause</button>
@@ -71,6 +86,12 @@
         <option value="google">Google</option>
         <option value="bing">Bing</option>
         <option value="duckduckgo">DDG</option>
+      </select>
+    </div>
+    <div class="config-row">
+      <span>Persona</span>
+      <select id="personaSelect" class="config-select">
+        <option value="none">None</option>
       </select>
     </div>
   </div>

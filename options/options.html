@@ -42,7 +42,7 @@
 
         <div class="setting-group">
           <div>
-            <label>Detailed Result Clicks</label>
+            <label>Result Click Simulation</label>
             <div class="help-text">Simulate clicking search results (uses more bandwidth)</div>
           </div>
           <label class="switch">
@@ -54,14 +54,53 @@
         <div class="setting-group">
           <div>
             <label>Debug Mode</label>
-            <div class="help-text">Enable verbose logging to console</div>
+            <div class="help-text">Enable verbose logging to browser console</div>
           </div>
           <label class="switch">
             <input type="checkbox" id="debugMode">
             <span class="slider round"></span>
           </label>
         </div>
+      </div>
 
+      <!-- Persona -->
+      <div class="section">
+        <h2>Persona</h2>
+        <p class="section-desc">Select a fake identity to generate tightly clustered search noise. The profiling algorithm builds a detailed model of someone who doesn't exist.</p>
+        <div class="setting-group">
+          <label for="persona">Active Persona</label>
+          <select id="persona">
+            <option value="none">None (random noise)</option>
+          </select>
+        </div>
+        <div id="personaDescription" class="persona-desc"></div>
+      </div>
+
+      <!-- Features -->
+      <div class="section">
+        <h2>Features</h2>
+
+        <div class="setting-group">
+          <div>
+            <label>Autosuggest Simulation</label>
+            <div class="help-text">Send incremental typing requests before each search to mimic real keyboard input. Adds latency per query.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="enableAutosuggest">
+            <span class="slider round"></span>
+          </label>
+        </div>
+
+        <div class="setting-group">
+          <div>
+            <label>Real-Time Trend Injection</label>
+            <div class="help-text">Mix currently trending topics into generated queries so noise reflects what people are actually searching right now.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="enableTrends">
+            <span class="slider round"></span>
+          </label>
+        </div>
       </div>
 
       <!-- Schedule -->
@@ -87,12 +126,13 @@
       <!-- Topics -->
       <div class="section">
         <h2>Topics</h2>
+        <p class="section-desc">More enabled topics = higher entropy = harder to classify noise. Keep at least 5 active for effective obfuscation.</p>
         <div class="topic-grid" id="topicGrid">
           <!-- Populated by JS -->
         </div>
       </div>
 
-      <!-- Panic / Actions -->
+      <!-- Actions -->
       <div class="actions">
         <button id="saveBtn">Save Settings</button>
         <button id="panicBtn">PANIC: Stop & Clear</button>
