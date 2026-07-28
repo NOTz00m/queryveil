@@ -1,27 +1,31 @@
 const browser = globalThis.browser || globalThis.chrome;
 
 let currentStatus = null;
-let currentTheme = localStorage.getItem('theme') || 'light';
+let currentTheme = getInitialTheme();
+let saveTimer = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   applyTheme(currentTheme);
-  await loadStatus();
-  await loadPersonas();
+  showVersion();
+  await Promise.all([loadStatus(), loadPersonas()]);
   setupEventListeners();
 
-  // listen for live updates from background
-  browser.runtime.onMessage.addListener((message) => {
-    if (message.type === 'statusUpdated') {
-      currentStatus = message;
-      updateUI();
-    }
+  browser.runtime.onMessage.addListener(message => {
+    if (message.type !== 'statusUpdated') return;
+    currentStatus = message;
+    updateUI();
   });
 
-  // fallback polling in case broadcast is missed
-  setInterval(loadStatus, 2000);
+  setInterval(() => {
+    if (!document.hidden) loadStatus();
+  }, 5000);
 });
 
-// --- theme ---
+function getInitialTheme() {
+  const stored = localStorage.getItem('theme');
+  if (stored === 'light' || stored === 'dark') return stored;
+  return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
 
 function toggleTheme() {
   currentTheme = currentTheme === 'light' ? 'dark' : 'light';
@@ -30,157 +34,164 @@ function toggleTheme() {
 }
 
 function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  const sunIcon = document.getElementById('sunIcon');
-  const moonIcon = document.getElementById('moonIcon');
+  document.documentElement.dataset.theme = theme;
+  document.getElementById('sunIcon').style.display = theme === 'dark' ? 'block' : 'none';
+  document.getElementById('moonIcon').style.display = theme === 'dark' ? 'none' : 'block';
+  document.getElementById('themeToggle').setAttribute(
+    'aria-label',
+    theme === 'dark' ? 'Use light theme' : 'Use dark theme'
+  );
+}
 
-  if (theme === 'dark') {
-    sunIcon.style.display = 'block';
-    moonIcon.style.display = 'none';
-  } else {
-    sunIcon.style.display = 'none';
-    moonIcon.style.display = 'block';
+function showVersion() {
+  const manifest = browser.runtime.getManifest?.();
+  if (manifest?.version) {
+    document.getElementById('versionLabel').textContent = `Version ${manifest.version}`;
   }
 }
 
-// --- data loading ---
-
 async function loadStatus() {
   try {
-    const response = await browser.runtime.sendMessage({ type: 'getStatus' });
-    currentStatus = response;
+    currentStatus = await browser.runtime.sendMessage({ type: 'getStatus' });
     updateUI();
   } catch (error) {
     console.error('error loading status:', error);
   }
 }
 
-// fetch persona list from background and populate the dropdown
 async function loadPersonas() {
   try {
     const response = await browser.runtime.sendMessage({ type: 'getPersonas' });
     const select = document.getElementById('personaSelect');
     if (!response?.personas || !select) return;
 
-    // keep the "None" option, add the rest
-    response.personas.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p.id;
-      opt.textContent = p.name;
-      opt.title = p.description;
-      select.appendChild(opt);
-    });
-  } catch (e) {
-    console.error('error loading personas:', e);
+    for (const persona of response.personas) {
+      const option = document.createElement('option');
+      option.value = persona.id;
+      option.textContent = persona.name;
+      option.title = persona.description;
+      select.appendChild(option);
+    }
+
+    if (currentStatus?.settings) {
+      select.value = currentStatus.settings.persona || 'none';
+    }
+  } catch (error) {
+    console.error('error loading personas:', error);
   }
 }
 
-// --- ui update ---
-
 function updateUI() {
-  if (!currentStatus) return;
-
-  const statusCard = document.getElementById('statusCard');
-  const statusText = document.getElementById('statusText');
-  const toggleBtn = document.getElementById('toggleBtn');
-  const pauseBtn = document.getElementById('pauseBtn');
+  if (!currentStatus?.settings) return;
 
   const { isActive, isPaused, settings, statistics, privacyScore } = currentStatus;
+  const statusCard = document.getElementById('statusCard');
+  const statusText = document.getElementById('statusText');
+  const statusHeading = document.getElementById('statusHeading');
+  const toggleButton = document.getElementById('toggleBtn');
+  const pauseButton = document.getElementById('pauseBtn');
 
-  // status card styling
   statusCard.className = 'status-card';
   if (isActive && !isPaused) {
     statusCard.classList.add('status-active');
+    document.body.dataset.state = 'active';
     statusText.textContent = 'Active';
-    toggleBtn.textContent = 'Stop';
-    toggleBtn.className = 'btn btn-danger';
-    pauseBtn.textContent = 'Pause';
-    pauseBtn.disabled = false;
+    statusHeading.textContent = 'Your veil is running';
+    toggleButton.textContent = 'Stop Veil';
+    toggleButton.className = 'button button-danger';
+    pauseButton.textContent = 'Pause';
+    pauseButton.className = 'button button-muted';
+    pauseButton.disabled = false;
   } else if (isPaused) {
     statusCard.classList.add('status-paused');
+    document.body.dataset.state = 'paused';
     statusText.textContent = 'Paused';
-    toggleBtn.textContent = 'Stop';
-    toggleBtn.className = 'btn btn-danger';
-    pauseBtn.textContent = 'Resume';
-    pauseBtn.disabled = false;
+    statusHeading.textContent = 'Cover is on hold';
+    toggleButton.textContent = 'Stop Veil';
+    toggleButton.className = 'button button-danger';
+    pauseButton.textContent = 'Resume';
+    pauseButton.className = 'button button-warning';
+    pauseButton.disabled = false;
   } else {
     statusCard.classList.add('status-inactive');
+    document.body.dataset.state = 'inactive';
     statusText.textContent = 'Inactive';
-    toggleBtn.textContent = 'Start';
-    toggleBtn.className = 'btn btn-primary';
-    pauseBtn.textContent = 'Pause';
-    pauseBtn.disabled = true;
+    statusHeading.textContent = 'Ready when you are';
+    toggleButton.textContent = 'Start Veil';
+    toggleButton.className = 'button button-primary';
+    pauseButton.textContent = 'Pause';
+    pauseButton.className = 'button button-muted';
+    pauseButton.disabled = true;
   }
 
-  // stats
-  document.getElementById('totalQueries').textContent = statistics?.totalQueries || 0;
-  document.getElementById('sessionQueries').textContent = statistics?.queriesThisSession || 0;
+  document.getElementById('totalQueries').textContent = formatCount(statistics?.totalQueries);
+  document.getElementById('sessionQueries').textContent = formatCount(statistics?.queriesThisSession);
+  document.getElementById('paceValue').textContent = getPace(settings);
+  document.getElementById('settingsSummary').textContent = getSettingsSummary(settings);
 
-  // privacy score ring
   updateScoreRing(privacyScore);
-
-  // sync dropdowns (only if not actively being changed)
-  if (document.activeElement.id !== 'intensitySelect') {
-    document.getElementById('intensitySelect').value = settings.intensity;
-  }
-  if (document.activeElement.id !== 'engineSelect') {
-    document.getElementById('engineSelect').value = settings.searchEngine;
-  }
-  if (document.activeElement.id !== 'personaSelect') {
-    document.getElementById('personaSelect').value = settings.persona || 'none';
-  }
+  syncSelect('intensitySelect', settings.intensity);
+  syncSelect('engineSelect', settings.searchEngine);
+  syncSelect('personaSelect', settings.persona || 'none');
 }
 
-// animate the svg ring and update the grade/score text
 function updateScoreRing(scoreData) {
-  const ringFill = document.getElementById('scoreRingFill');
-  const gradeEl = document.getElementById('scoreGrade');
-  const valueEl = document.getElementById('scoreValue');
+  if (!scoreData) return;
 
-  if (!scoreData || !ringFill) return;
+  const score = Math.max(0, Math.min(100, scoreData.score || 0));
+  const circumference = 2 * Math.PI * 46;
+  const ring = document.getElementById('scoreRingFill');
+  const grade = document.getElementById('scoreGrade');
+  const color = score >= 80
+    ? 'var(--accent)'
+    : score >= 55
+      ? '#4d86c6'
+      : score >= 35
+        ? 'var(--warning)'
+        : 'var(--danger)';
 
-  const { score, grade } = scoreData;
-
-  // svg circle math: circumference = 2πr, r=52
-  const circumference = 2 * Math.PI * 52;
-  const offset = circumference - (score / 100) * circumference;
-
-  ringFill.style.strokeDasharray = `${circumference}`;
-  ringFill.style.strokeDashoffset = `${offset}`;
-
-  // color the ring based on score
-  let color;
-  if (score >= 80) color = 'var(--score-excellent)';
-  else if (score >= 60) color = 'var(--score-good)';
-  else if (score >= 40) color = 'var(--score-fair)';
-  else color = 'var(--score-poor)';
-
-  ringFill.style.stroke = color;
-
-  gradeEl.textContent = grade;
-  gradeEl.style.color = color;
-  valueEl.textContent = score;
+  ring.style.strokeDasharray = String(circumference);
+  ring.style.strokeDashoffset = String(circumference - (score / 100) * circumference);
+  ring.style.stroke = color;
+  grade.style.color = color;
+  grade.textContent = scoreData.grade;
+  document.getElementById('scoreValue').textContent = `${score}/100`;
 }
 
-// --- events ---
+function syncSelect(id, value) {
+  const select = document.getElementById(id);
+  if (document.activeElement !== select) select.value = value;
+}
+
+function getPace(settings) {
+  const rates = { low: 6, medium: 12, high: 20 };
+  const rate = settings.intensity === 'custom'
+    ? settings.customRate
+    : rates[settings.intensity];
+  return `${rate || 12}/hr`;
+}
+
+function getSettingsSummary(settings) {
+  const topicCount = Object.values(settings.topics || {}).filter(Boolean).length;
+  const persona = settings.persona && settings.persona !== 'none'
+    ? 'persona on'
+    : 'random profile';
+  const trends = settings.enableTrends ? 'trends on' : 'trends off';
+  return `${topicCount} topics, ${persona}, ${trends}`.replace(/^./, letter => letter.toUpperCase());
+}
+
+function formatCount(value) {
+  return new Intl.NumberFormat(undefined, { notation: 'compact' }).format(value || 0);
+}
 
 function setupEventListeners() {
   document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-
   document.getElementById('toggleBtn').addEventListener('click', async () => {
-    try {
-      await browser.runtime.sendMessage({ type: 'toggle' });
-      await loadStatus();
-    } catch (e) { console.error(e); }
+    await sendAction({ type: 'toggle' });
   });
-
   document.getElementById('pauseBtn').addEventListener('click', async () => {
-    try {
-      await browser.runtime.sendMessage({ type: 'pause' });
-      await loadStatus();
-    } catch (e) { console.error(e); }
+    await sendAction({ type: 'pause' });
   });
-
   document.getElementById('settingsBtn').addEventListener('click', () => {
     if (browser.runtime.openOptionsPage) {
       browser.runtime.openOptionsPage();
@@ -189,31 +200,35 @@ function setupEventListeners() {
     }
   });
 
-  // quick settings save immediately on change
-  document.getElementById('intensitySelect').addEventListener('change', async (e) => {
-    try {
-      await browser.runtime.sendMessage({
-        type: 'updateSettings',
-        settings: { intensity: e.target.value }
-      });
-    } catch (e) { console.error(e); }
-  });
+  bindQuickSetting('intensitySelect', 'intensity');
+  bindQuickSetting('engineSelect', 'searchEngine');
+  bindQuickSetting('personaSelect', 'persona');
+}
 
-  document.getElementById('engineSelect').addEventListener('change', async (e) => {
-    try {
-      await browser.runtime.sendMessage({
-        type: 'updateSettings',
-        settings: { searchEngine: e.target.value }
-      });
-    } catch (e) { console.error(e); }
+function bindQuickSetting(elementId, settingName) {
+  document.getElementById(elementId).addEventListener('change', async event => {
+    await sendAction({
+      type: 'updateSettings',
+      settings: { [settingName]: event.target.value }
+    }, true);
   });
+}
 
-  document.getElementById('personaSelect').addEventListener('change', async (e) => {
-    try {
-      await browser.runtime.sendMessage({
-        type: 'updateSettings',
-        settings: { persona: e.target.value }
-      });
-    } catch (e) { console.error(e); }
-  });
+async function sendAction(message, showSaved = false) {
+  try {
+    await browser.runtime.sendMessage(message);
+    if (showSaved) flashSaved();
+    await loadStatus();
+  } catch (error) {
+    console.error('error updating queryveil:', error);
+  }
+}
+
+function flashSaved() {
+  const state = document.getElementById('saveState');
+  state.textContent = 'Saved';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    state.textContent = '';
+  }, 1200);
 }

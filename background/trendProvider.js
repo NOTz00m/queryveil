@@ -31,7 +31,7 @@ export class TrendProvider {
   }
 
   // get trending topics, fetching fresh if cache is stale.
-  // returns an array of strings like ["World Cup", "iPhone 17", "heat wave"]
+  // returns an array of strings like ["world cup", "new phone", "heat wave"]
   async getTrendingTopics() {
     const now = Date.now();
 
@@ -78,13 +78,13 @@ export class TrendProvider {
   }
 
   // pull <title> elements out of the rss xml.
-  // we're intentionally using regex instead of DOMParser here because
-  // service workers don't always have DOMParser available, and the
+  // we're intentionally using regex instead of a dom parser here because
+  // service workers don't always have one available, and the
   // rss format is simple enough that regex is reliable for this
   parseRSS(xml) {
     const topics = [];
     // match <title> tags inside <item> blocks
-    // the rss structure is: <item><title>TOPIC</title>...</item>
+    // the rss structure is: <item><title>topic</title>...</item>
     const itemRegex = /<item>[\s\S]*?<\/item>/gi;
     const titleRegex = /<title><!\[CDATA\[(.*?)\]\]>|<title>(.*?)<\/title>/i;
 

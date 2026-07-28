@@ -1,110 +1,131 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QueryVeil</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  
-  <div class="header">
-    <div class="brand">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-      </svg>
-      QueryVeil
-    </div>
-    <button id="themeToggle" class="theme-toggle" title="Toggle Theme">
-      <!-- Sun Icon -->
-      <svg id="sunIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
-        <circle cx="12" cy="12" r="5"></circle>
-        <line x1="12" y1="1" x2="12" y2="3"></line>
-        <line x1="12" y1="21" x2="12" y2="23"></line>
-        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-        <line x1="1" y1="12" x2="3" y2="12"></line>
-        <line x1="21" y1="12" x2="23" y2="12"></line>
-        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-      </svg>
-      <!-- Moon Icon -->
-      <svg id="moonIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-      </svg>
-    </button>
-  </div>
-
-  <div id="statusCard" class="status-card status-inactive">
-    <div class="status-indicator"></div>
-    <span id="statusText" class="status-text">Inactive</span>
-  </div>
-
-  <!-- Privacy Score Ring -->
-  <div class="score-section">
-    <div class="score-ring-container">
-      <svg class="score-ring" viewBox="0 0 120 120">
-        <circle class="score-ring-bg" cx="60" cy="60" r="52" />
-        <circle id="scoreRingFill" class="score-ring-fill" cx="60" cy="60" r="52" />
-      </svg>
-      <div class="score-inner">
-        <div id="scoreGrade" class="score-grade">—</div>
-        <div id="scoreValue" class="score-value">0</div>
+<body data-state="inactive">
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M8.5 12.2 10.8 14.5 15.8 9.5"/>
+          </svg>
+        </span>
+        <span>
+          <strong>QueryVeil</strong>
+          <small id="versionLabel">Local search cover</small>
+        </span>
       </div>
-    </div>
-    <div class="score-label">obfuscation estimate</div>
-  </div>
+      <button id="themeToggle" class="icon-button" type="button" aria-label="Use dark theme">
+        <svg id="sunIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+        </svg>
+        <svg id="moonIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M20.2 15.2A8.5 8.5 0 0 1 8.8 3.8 8.5 8.5 0 1 0 20.2 15.2z"></path>
+        </svg>
+      </button>
+    </header>
 
-  <div class="controls-row">
-    <button id="toggleBtn" class="btn btn-primary">Start</button>
-    <button id="pauseBtn" class="btn btn-warning" disabled>Pause</button>
-  </div>
+    <section id="statusCard" class="status-card status-inactive" aria-live="polite">
+      <div class="status-copy">
+        <div class="status-line">
+          <span class="status-indicator" aria-hidden="true"></span>
+          <span id="statusText">Inactive</span>
+        </div>
+        <h1 id="statusHeading">Ready when you are</h1>
+        <p id="settingsSummary">Medium pace, all topics</p>
+      </div>
 
-  <div class="stats-grid">
-    <div class="stat-box">
-      <div class="stat-label">Total Queries</div>
-      <div id="totalQueries" class="stat-value">0</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Session</div>
-      <div id="sessionQueries" class="stat-value">0</div>
-    </div>
-  </div>
+      <div class="score-ring-container" title="Local obfuscation estimate">
+        <svg class="score-ring" viewBox="0 0 108 108" aria-hidden="true">
+          <circle class="score-ring-bg" cx="54" cy="54" r="46"></circle>
+          <circle id="scoreRingFill" class="score-ring-fill" cx="54" cy="54" r="46"></circle>
+        </svg>
+        <div class="score-inner">
+          <strong id="scoreGrade">--</strong>
+          <span id="scoreValue">0</span>
+        </div>
+      </div>
+    </section>
 
-  <div class="quick-config">
-    <div class="config-row">
-      <span>Intensity</span>
-      <select id="intensitySelect" class="config-select">
-        <option value="low">Low</option>
-        <option value="medium">Medium</option>
-        <option value="high">High</option>
-        <option value="custom">Custom</option>
-      </select>
+    <div class="controls-row">
+      <button id="toggleBtn" class="button button-primary" type="button">Start Veil</button>
+      <button id="pauseBtn" class="button button-muted" type="button" disabled>Pause</button>
     </div>
-    <div class="config-row">
-      <span>Engine</span>
-      <select id="engineSelect" class="config-select">
-        <option value="google">Google</option>
-        <option value="bing">Bing</option>
-        <option value="duckduckgo">DDG</option>
-      </select>
-    </div>
-    <div class="config-row">
-      <span>Persona</span>
-      <select id="personaSelect" class="config-select">
-        <option value="none">None</option>
-      </select>
-    </div>
-  </div>
 
-  <div class="footer">
-    <button id="settingsBtn" class="btn btn-secondary" style="width: 100%">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    <section class="stats-grid" aria-label="Query statistics">
+      <div class="stat-card">
+        <span>Total cover</span>
+        <strong id="totalQueries">0</strong>
+      </div>
+      <div class="stat-card">
+        <span>This session</span>
+        <strong id="sessionQueries">0</strong>
+      </div>
+      <div class="stat-card">
+        <span>Pace</span>
+        <strong id="paceValue">12/hr</strong>
+      </div>
+    </section>
+
+    <section class="settings-card">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">Quick controls</span>
+          <h2>Current profile</h2>
+        </div>
+        <span id="saveState" class="save-state" aria-live="polite"></span>
+      </div>
+
+      <label class="config-row" for="intensitySelect">
+        <span>
+          <strong>Intensity</strong>
+          <small>How often cover is added</small>
+        </span>
+        <select id="intensitySelect">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="custom">Custom</option>
+        </select>
+      </label>
+
+      <label class="config-row" for="engineSelect">
+        <span>
+          <strong>Search engine</strong>
+          <small>Where noise is sent</small>
+        </span>
+        <select id="engineSelect">
+          <option value="google">Google</option>
+          <option value="bing">Bing</option>
+          <option value="duckduckgo">DuckDuckGo</option>
+        </select>
+      </label>
+
+      <label class="config-row" for="personaSelect">
+        <span>
+          <strong>Ghost persona</strong>
+          <small>Focus the decoy profile</small>
+        </span>
+        <select id="personaSelect">
+          <option value="none">None</option>
+        </select>
+      </label>
+    </section>
+
+    <button id="settingsBtn" class="button settings-button" type="button">
+      <span>Advanced Settings</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <path d="m9 18 6-6-6-6"></path>
       </svg>
-      Advanced Settings
     </button>
-  </div>
+  </main>
 
   <script src="popup.js"></script>
 </body>

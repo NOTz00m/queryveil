@@ -346,7 +346,7 @@ export class PersonaEngine {
     return this.personas[personaId] || null;
   }
 
-  // get the list of all personas for the UI dropdown
+  // get the list of all personas for the ui dropdown
   getPersonaList() {
     return Object.values(this.personas).map(p => ({
       id: p.id,

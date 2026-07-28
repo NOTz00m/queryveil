@@ -1,15 +1,15 @@
-// privacy score — calculates a local obfuscation effectiveness estimate
+// privacy score calculates a local obfuscation effectiveness estimate
 // based entirely on data we already have in storage. nothing leaves the
 // browser, this is pure math on local stats and settings.
 //
 // the score is meant to give users a rough sense of how effectively
 // their real search profile is being buried under noise. it's not
-// a guarantee — we label it as an estimate in the UI.
+// a guarantee, we label it as an estimate in the ui.
 
 export class PrivacyScore {
 
   // compute the full score breakdown.
-  // returns { score: 0-100, grade: 'A+'-'F', factors: {...} }
+  // returns the score, grade, and factor breakdown
   calculate(settings, statistics) {
     const factors = {
       volume: this.volumeFactor(settings, statistics),
@@ -19,7 +19,7 @@ export class PrivacyScore {
       features: this.featuresFactor(settings)
     };
 
-    // weighted average — volume and diversity matter most,
+    // weighted average, volume and diversity matter most,
     // consistency rewards sustained use, persona and features are bonuses
     const weights = {
       volume: 0.30,
@@ -83,7 +83,7 @@ export class PrivacyScore {
   }
 
   // how long the extension has been running.
-  // profiling algorithms need sustained noise to be confused —
+    // profiling algorithms need sustained noise to be confused,
   // sporadic on/off usage is much less effective
   consistencyFactor(statistics) {
     const sessionStart = statistics?.sessionStartTime;
@@ -101,7 +101,7 @@ export class PrivacyScore {
   }
 
   // having an active persona means the noise forms a coherent fake identity
-  // instead of random scatter — much harder for ML to filter out
+  // instead of random scatter, much harder for ml to filter out
   personaFactor(settings) {
     if (settings?.persona && settings.persona !== 'none') return 100;
     return 35; // random noise still has value, just less

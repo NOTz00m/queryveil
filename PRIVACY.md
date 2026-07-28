@@ -1,70 +1,70 @@
 # Privacy Policy
 
-**Last Updated: July 3, 2026**
+**Last updated: July 27, 2026**
 
-QueryVeil is built on a simple, hardcoded principle: we can't collect what we don't capture.
+QueryVeil is built around a simple rule: it cannot collect data it never reads or records.
 
-## What We DON'T Collect
+## Data QueryVeil does not collect
 
-- ❌ Your real search queries
-- ❌ Your browsing history
-- ❌ Generated noise queries
-- ❌ Personal information
-- ❌ Analytics or telemetry
-- ❌ IP addresses or device identifiers
+QueryVeil does not access or store:
 
-## What We DO Store (Locally Only)
+- Your real search queries
+- Your browsing history
+- Generated query text
+- Personal information
+- Analytics or telemetry
+- Device identifiers
 
-Everything stays strictly on your device:
+The extension does not request Firefox history, tabs, cookies, geolocation, or identity permissions.
 
-- ✅ Your settings (intensity, topics, schedule, active persona, enabled features)
-- ✅ Simulation state (to ensure timing consistency across browser restarts)
-- ✅ Query counts and privacy score metrics (just raw numbers, not actual query text)
-- ✅ Cached Google Trends data (for real-time trend injection, pulled directly to your machine)
-- ✅ Extension state (on/paused/off)
+## Data stored locally
 
-None of this data ever leaves your computer.
+Firefox local extension storage contains:
 
-## How It Works
+- Extension settings, including intensity, topics, schedule, persona, languages, and feature switches
+- Simulator state used to keep timing consistent across service-worker restarts
+- Total and per-session generated-query counters
+- Cached Google Trends titles and the cache timestamp
+- Active, paused, or stopped state
 
-1. The extension generates a highly realistic search query in memory. This query is potentially heavily biased by your chosen Persona and any locally-cached trending topics.
-2. If Autosuggest Simulation is enabled, it mimics keystrokes locally by sending partial query prefixes to the search engine, just like a real keyboard user.
-3. It sends the full query to your chosen search engine (Google, Bing, or DuckDuckGo).
-4. The query is immediately discarded from memory.
-5. Only a local counter increments, and your local Obfuscation Estimate (privacy score) updates.
+The local obfuscation estimate is calculated from these settings and counters. It does not inspect real search history or retain generated query text.
 
-The actual text of the generated noise is never saved anywhere.
+## Network requests
 
-## Third-Party Services
+QueryVeil communicates only with the services needed for enabled features:
 
-The only external communication the extension makes is with:
-- **Search engines**: to send the generated noise queries and autosuggest typing prefixes.
-- **Google Trends RSS feed**: to securely fetch current trending topics locally to your browser (ensuring the noise queries reflect timely world events).
+- The selected search engine receives generated searches.
+- Search-engine autosuggest endpoints receive partial query prefixes when autosuggest simulation is enabled.
+- The public Google Trends RSS feed is fetched when trend injection is enabled and its local cache is stale.
 
-No other APIs, servers, or services are ever contacted. Search engines see these noise queries as completely normal searches coming from your browser. They may set tracking cookies like they would for any normal search. QueryVeil doesn't control search engine privacy policies.
+Requests are made directly from the extension. There is no QueryVeil server, account, telemetry endpoint, or intermediary. Search providers can apply their own cookies, logging, and privacy policies to generated traffic.
 
-## Your Data, Your Control
+## Query lifecycle
 
-All QueryVeil data sits in your browser's local storage. You can:
-- View it anytime in Firefox DevTools (F12 → Storage)
-- Nuke it permanently by uninstalling the extension
-- Control exactly what runs with the on/off/pause controls
+1. The extension generates a query in memory.
+2. Optional autosuggest prefixes are sent to the selected search engine.
+3. The full query is sent.
+4. The query text is discarded.
+5. A local numeric counter is incremented.
 
-## Security
+Debug mode can print generated query details to the local Firefox console. Nothing in that console is transmitted by QueryVeil.
 
-- All processing, logic, and scoring happens on your device.
-- Debug mode logs only print to your local browser console (they are never transmitted anywhere).
-- Open source code - you can audit every line yourself.
-- No tracking, no phone-home mechanisms, no analytics.
+## Trends and seasonal context
 
-## Changes to This Policy
+Google Trends titles are cached locally for up to three hours. The request uses no QueryVeil account or telemetry.
 
-Updates will be posted here with a new "Last Updated" date and announced in extension release notes.
+Seasonal weighting uses northern-hemisphere defaults. QueryVeil deliberately does not detect your location or hemisphere. Users in the southern hemisphere may see seasonally mismatched cover, but no location data is accessed.
 
-## Questions?
+## Your control
 
-Open an issue on [GitHub](https://github.com/NOTz00m/queryveil/issues)
+You can pause or stop generation at any time. Uninstalling the extension removes its Firefox extension storage. Firefox developer tools can also inspect that storage directly.
 
----
+## Security and scope
 
-**Bottom line:** QueryVeil doesn't collect your data because it simply has no mechanism to do so. Everything runs locally, nothing is tracked, and you're in complete control.
+All query generation, settings logic, timing simulation, and scoring run locally. The source is public and can be audited.
+
+QueryVeil reduces the usefulness of a search profile. It does not hide your IP address, prevent browser fingerprinting, replace a VPN or Tor, or guarantee that generated traffic cannot be detected. See [BENCHMARK.md](BENCHMARK.md) for measured results and limitations.
+
+## Questions
+
+Open an issue on [GitHub](https://github.com/NOTz00m/queryveil/issues).

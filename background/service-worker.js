@@ -4,6 +4,7 @@ import { AntiDetection } from './antiDetection.js';
 import { PersonaEngine } from './personaEngine.js';
 import { TrendProvider } from './trendProvider.js';
 import { PrivacyScore } from './privacyScore.js';
+import { shouldPauseForSchedule } from './settings.js';
 
 const browser = globalThis.browser || globalThis.chrome;
 
@@ -45,7 +46,7 @@ class QueryVeilService {
     if (this.settings.enabled && !this.settings.paused) {
       const alarm = await browser.alarms.get(this.ALARM_NAME);
       if (!alarm || reason === 'install') {
-        if (reason === 'install') console.log('[QueryVeil] fresh install/update — rescheduling');
+        if (reason === 'install') console.log('[QueryVeil] fresh install/update, rescheduling');
         this.scheduleNextRun();
       }
     }
@@ -77,7 +78,7 @@ class QueryVeilService {
         privacyScore: scoreData
       }).catch(() => {});
     } catch (e) {
-      // no receivers open, that's fine
+      // no receivers open
     }
   }
 
@@ -128,6 +129,11 @@ class QueryVeilService {
       enableTrends: true,
       persona: 'none',
       debugMode: false,
+      languages: {
+        primary: 'en',
+        enabled: [],
+        mixPercentage: 0
+      },
       schedule: {
         enabled: false,
         startHour: 9,
@@ -264,16 +270,7 @@ class QueryVeilService {
   }
 
   shouldPauseForSchedule() {
-    if (!this.settings.schedule?.enabled) return false;
-    const hour = new Date().getHours();
-    const start = this.settings.schedule.startHour;
-    const end = this.settings.schedule.endHour;
-
-    if (start < end) {
-      return hour < start || hour >= end;
-    } else {
-      return hour < start && hour >= end;
-    }
+    return shouldPauseForSchedule(this.settings);
   }
 
   scheduleNextRun() {
@@ -301,10 +298,13 @@ class QueryVeilService {
       trends = await this.trendProvider.getTrendingTopics();
     }
 
-    const query = this.queryGen.generateQuery(complexity, this.settings, sessionInfo, persona, trends);
+    const result = this.queryGen.generateQuery(complexity, this.settings, sessionInfo, persona, trends);
+    const query = result.query;
+    const language = result.language || 'en';
 
     if (this.settings.debugMode) {
-      console.log(`[QueryVeil] executing: "${query}" on ${this.settings.searchEngine}${persona ? ` (persona: ${persona.name})` : ''}`);
+      const langTag = language !== 'en' ? ` [${language}]` : '';
+      console.log(`[QueryVeil] executing: "${query}" on ${this.settings.searchEngine}${persona ? ` (persona: ${persona.name})` : ''}${langTag}`);
     }
 
     try {
@@ -313,9 +313,9 @@ class QueryVeilService {
         await this.antiDetect.simulateAutosuggest(this.settings.searchEngine, query);
       }
 
-      const result = await this.antiDetect.executeQuery(this.settings.searchEngine, query);
+      const execResult = await this.antiDetect.executeQuery(this.settings.searchEngine, query, { language });
 
-      if (result.success) {
+      if (execResult.success) {
         this.updateStats();
         if (this.settings.enableResultClicks && this.behaviorSim.shouldClickResult()) {
           if (this.settings.debugMode) console.log('[QueryVeil] would click result (simulation)');
@@ -363,7 +363,7 @@ class QueryVeilService {
   }
 
   handlePanic() {
-    console.warn('[QueryVeil] PANIC — killing everything');
+    console.warn('[QueryVeil] panic, killing everything');
     this.settings.enabled = false;
     this.settings.paused = false;
     this.saveSettings();

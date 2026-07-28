@@ -1,6 +1,8 @@
-// anti-detection layer makes generated queries indistinguishable
+// makes generated queries indistinguishable
 // from real human searches handles request headers, rate limiting,
 // backoff on failures, and optional autosuggest simulation
+
+import { QueryLanguages } from './queryLanguages.js';
 
 const browser = globalThis.browser || globalThis.chrome;
 
@@ -9,6 +11,7 @@ export class AntiDetection {
     this.failureCount = 0;
     this.lastFailureTime = null;
     this.backoffMultiplier = 1;
+    this.queryLanguages = new QueryLanguages();
   }
 
   // pick a realistic referrer for the search request
@@ -51,14 +54,25 @@ export class AntiDetection {
     return homepages[searchEngine] || 'https://www.google.com';
   }
 
-  buildSearchURL(searchEngine, query) {
+  buildSearchURL(searchEngine, query, langCode = 'en') {
     const encodedQuery = encodeURIComponent(query);
     const urls = {
       'google': `https://www.google.com/search?q=${encodedQuery}`,
       'bing': `https://www.bing.com/search?q=${encodedQuery}`,
       'duckduckgo': `https://duckduckgo.com/?q=${encodedQuery}`
     };
-    return urls[searchEngine] || urls['google'];
+    let url = urls[searchEngine] || urls['google'];
+
+    // add language params for non-english queries
+    if (langCode && langCode !== 'en') {
+      const lang = this.queryLanguages.getLanguage(langCode);
+      if (lang?.searchParams) {
+        const params = new URLSearchParams(lang.searchParams);
+        url += '&' + params.toString();
+      }
+    }
+
+    return url;
   }
 
   // get the autocomplete/suggest endpoint url for each search engine
@@ -89,10 +103,19 @@ export class AntiDetection {
   // we intentionally don't set sec-fetch-* because those are
   // handled by the browser automatically and setting them manually
   // can actually look suspicious
-  getHeaders(referrer) {
+  getHeaders(referrer, langCode = 'en') {
+    // pick accept-language based on query language
+    let acceptLang = 'en-US,en;q=0.5';
+    if (langCode && langCode !== 'en') {
+      const lang = this.queryLanguages.getLanguage(langCode);
+      if (lang?.acceptLanguage) {
+        acceptLang = lang.acceptLanguage;
+      }
+    }
+
     const headers = {
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.5',
+      'Accept-Language': acceptLang,
       'DNT': '1',
       'Upgrade-Insecure-Requests': '1',
       'Cache-Control': 'max-age=0'
@@ -131,7 +154,7 @@ export class AntiDetection {
     if (words.length === 0) return;
 
     // pick 3-6 incremental prefixes of the query to simulate typing.
-    // we don't send every single character — real autocomplete
+    // we don't send every single character, real autocomplete
     // doesn't fire on every keystroke either, it debounces
     const prefixes = this.generateTypingPrefixes(query);
 
@@ -187,9 +210,10 @@ export class AntiDetection {
 
   // execute the actual search query with anti-detection measures
   async executeQuery(searchEngine, query, options = {}) {
+    const langCode = options.language || 'en';
     const referrer = this.getReferrer(searchEngine);
-    const url = this.buildSearchURL(searchEngine, query);
-    const headers = this.getHeaders(referrer);
+    const url = this.buildSearchURL(searchEngine, query, langCode);
+    const headers = this.getHeaders(referrer, langCode);
 
     try {
       const response = await fetch(url, {
@@ -341,7 +365,7 @@ export class AntiDetection {
     return array[Math.floor(Math.random() * array.length)];
   }
 
-  // generate plausible result URLs for click simulation
+  // generate plausible result urls for click simulation
   generateMockResultURL(query, position) {
     const domains = [
       'wikipedia.org', 'reddit.com', 'youtube.com', 'amazon.com',

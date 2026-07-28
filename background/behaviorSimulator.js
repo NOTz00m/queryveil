@@ -3,11 +3,13 @@
 // fixed intervals so the query schedule looks organic
 
 export class BehaviorSimulator {
-  constructor() {
+  constructor(options = {}) {
+    this.now = options.now || (() => Date.now());
+    this.date = options.date || (() => new Date());
     this.currentSession = null;
     this.lastQueryTime = null;
     this.queriesThisHour = 0;
-    this.hourResetTime = Date.now() + 3600000;
+    this.hourResetTime = this.now() + 3600000;
   }
 
   getState() {
@@ -24,14 +26,14 @@ export class BehaviorSimulator {
     this.currentSession = state.currentSession;
     this.lastQueryTime = state.lastQueryTime;
     this.queriesThisHour = state.queriesThisHour || 0;
-    this.hourResetTime = state.hourResetTime || (Date.now() + 3600000);
+    this.hourResetTime = state.hourResetTime || (this.now() + 3600000);
   }
 
   // figure out when to fire the next query.
   // custom rate mode uses even spacing with jitter,
   // standard modes (low/medium/high) use session-based timing
   getNextQueryDelay(settings) {
-    const now = Date.now();
+    const now = this.now();
 
     // custom rate user specified exact queries/hour
     // spread evenly with 20% jitter so it's not a perfect metronome
@@ -77,7 +79,7 @@ export class BehaviorSimulator {
     this.currentSession = {
       queriesRemaining: queriesInSession,
       topic: null, // set by query generator when the first query fires
-      startTime: Date.now() + sessionGap
+      startTime: this.now() + sessionGap
     };
 
     return sessionGap;
@@ -93,7 +95,7 @@ export class BehaviorSimulator {
     // gaussian jitter ±30s
     const jitter = this.normalRandom(0, 30000);
 
-    // time-of-day weighting — search less during sleep hours
+    // time-of-day weighting, search less during sleep hours
     const timeWeight = this.getTimeOfDayWeight();
 
     const intensityMultiplier = this.getIntensityMultiplier(settings.intensity, settings.customRate);
@@ -111,12 +113,67 @@ export class BehaviorSimulator {
   // higher value = longer delay = fewer queries.
   // models the fact that humans don't search at 3am (usually)
   getTimeOfDayWeight() {
-    const hour = new Date().getHours();
+    const hour = this.date().getHours();
 
     if (hour >= 0 && hour < 6) return 4.0;   // 12am-6am: sleep
     if (hour >= 6 && hour < 9) return 1.5;   // 6am-9am: waking up
     if (hour >= 9 && hour < 23) return 1.0;  // 9am-11pm: peak activity
     return 2.0;                               // 11pm-12am: winding down
+  }
+
+  // returns topic weights based on day of week.
+  // people search differently on weekends vs weekdays.
+  // returns an object of topic -> weight multiplier
+  getDayOfWeekWeights() {
+    const day = this.date().getDay(); // 0=sun, 6=sat
+    const isWeekend = day === 0 || day === 6;
+    const isFriday = day === 5;
+
+    if (isWeekend) {
+      return {
+        entertainment: 1.8, travel: 1.6, food: 1.5, hobbies: 1.7,
+        shopping: 1.4, sports: 1.6, local: 1.5,
+        technology: 0.7, careers: 0.4, finance: 0.5, education: 0.6
+      };
+    }
+
+    if (isFriday) {
+      return {
+        entertainment: 1.5, food: 1.3, travel: 1.2,
+        careers: 0.8, technology: 0.9
+      };
+    }
+
+    // weekday: more work-related topics
+    return {
+      technology: 1.3, careers: 1.4, finance: 1.2, education: 1.3,
+      entertainment: 0.7, travel: 0.6, hobbies: 0.5, sports: 0.8
+    };
+  }
+
+  // returns seasonal topic weight boosts based on current month.
+  // uses northern hemisphere defaults. we don't detect hemisphere
+  // because that would require geolocation which hurts privacy.
+  // this is documented in the privacy policy.
+  getSeasonalWeights() {
+    const month = this.date().getMonth(); // 0=jan
+
+    const seasonalBoosts = {
+      0: { finance: 1.5, health: 1.3 },                    // jan: new years resolutions, tax prep
+      1: { finance: 1.4, shopping: 1.2 },                  // feb: valentines, tax season
+      2: { finance: 1.6, education: 1.2 },                 // mar: tax deadline, spring
+      3: { finance: 1.3, travel: 1.3, hobbies: 1.3 },      // apr: tax filing, spring activities
+      4: { travel: 1.4, hobbies: 1.4 },                    // may: summer planning
+      5: { travel: 1.6, food: 1.2 },                       // jun: summer vacation
+      6: { travel: 1.5, entertainment: 1.3 },              // jul: peak summer
+      7: { education: 1.5, shopping: 1.4 },                // aug: back to school
+      8: { education: 1.3, sports: 1.4 },                  // sep: school, football season
+      9: { entertainment: 1.3, shopping: 1.2 },            // oct: halloween
+      10: { shopping: 1.8, food: 1.4 },                    // nov: black friday, thanksgiving
+      11: { shopping: 2.0, travel: 1.3, food: 1.3 }        // dec: holiday shopping, christmas
+    };
+
+    return seasonalBoosts[month] || {};
   }
 
   // convert intensity setting to a numeric multiplier.
@@ -154,7 +211,7 @@ export class BehaviorSimulator {
 
   recordQuery() {
     this.queriesThisHour++;
-    this.lastQueryTime = Date.now();
+    this.lastQueryTime = this.now();
   }
 
   // decide whether to fire during active vs idle browsing.

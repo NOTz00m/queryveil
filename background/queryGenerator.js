@@ -1,22 +1,26 @@
-// query generation engine — builds realistic search queries using
+// query generation engine -- builds realistic search queries using
 // markov chains, topic modeling, persona biasing, and trend injection.
 // the goal is noise that's indistinguishable from real human searches.
 
+import { QueryLanguages } from './queryLanguages.js';
+
 export class QueryGenerator {
-  constructor() {
+  constructor(options = {}) {
+    this.date = options.date || (() => new Date());
     this.topics = this.initializeTopics();
     this.markovChains = this.buildMarkovChains();
+    this.queryLanguages = new QueryLanguages();
     this.currentSessionTopic = null;
   }
 
   // returns the current year as a string, used in templates
   // so queries don't say "2024" forever
   currentYear() {
-    return new Date().getFullYear().toString();
+    return this.date().getFullYear().toString();
   }
 
   // all topic categories with keywords, entities, and templates.
-  // these are the building blocks for generated queries —
+  // these are the building blocks for generated queries
   // more variety here = higher entropy = harder to classify as noise
   initializeTopics() {
     return {
@@ -579,9 +583,16 @@ export class QueryGenerator {
   }
 
   // generate a query, optionally biased by persona and/or trending topics.
-  // persona can be null (random mode), trends is an array of strings
+  // persona can be null (random mode), trends is an array of strings.
+  // returns { query, language } so caller knows what language headers to set
   generateQuery(complexity, settings, sessionInfo, persona = null, trends = []) {
-    // pick topic — persona-weighted or random
+    // check if we should generate in a non-english language
+    const langResult = this.tryMultilingualQuery(settings);
+    if (langResult) {
+      return langResult;
+    }
+
+    // pick topic -- persona-weighted or random
     let topic;
     if (sessionInfo && sessionInfo.topic) {
       topic = sessionInfo.topic;
@@ -595,11 +606,23 @@ export class QueryGenerator {
     const topicData = this.topics[topic];
     if (!topicData) {
       // fallback if somehow we got a topic that doesn't exist
-      return this.generateMediumQuery(this.topics.general, [], []);
+      return { query: this.generateMediumQuery(this.topics.general, [], []), language: 'en' };
     }
 
     // gather extra entities from persona and trends
     const personaEntities = persona?.entities?.[topic] || [];
+
+    // ~3% chance of a url-as-query (people typing domains into search)
+    if (Math.random() < 0.03) {
+      return { query: this.generateURLQuery(), language: 'en' };
+    }
+
+    // ~12% chance of voice-style query (natural language sentences)
+    if (Math.random() < 0.12) {
+      let query = this.generateVoiceQuery(topicData, personaEntities);
+      query = this.addTemporalContext(query);
+      return { query, language: 'en' };
+    }
 
     let query;
     switch (complexity) {
@@ -619,10 +642,34 @@ export class QueryGenerator {
         query = this.generateMediumQuery(topicData, personaEntities, trends);
     }
 
-    return query;
+    // apply temporal context to ~20% of queries
+    query = this.addTemporalContext(query);
+
+    return { query, language: 'en' };
   }
 
-  // select a topic — uses persona weights if available,
+  // try to generate a multilingual query based on language settings.
+  // returns null if we should fall through to english generation
+  tryMultilingualQuery(settings) {
+    const langSettings = settings?.languages;
+    if (!langSettings) return null;
+
+    const primary = langSettings.primary || 'en';
+    const enabled = langSettings.enabled || [];
+    const mix = langSettings.mixPercentage || 0;
+
+    const selectedLang = this.queryLanguages.selectLanguage(primary, enabled, mix);
+
+    // if english was selected, fall through to normal generation
+    if (selectedLang === 'en') return null;
+
+    const query = this.queryLanguages.generateLocalizedQuery(selectedLang, this.currentYear());
+    if (!query) return null;
+
+    return { query, language: selectedLang };
+  }
+
+  // select a topic using persona weights if available,
   // otherwise picks uniformly from enabled topics
   selectTopic(settings, persona) {
     const enabledTopics = Object.keys(this.topics).filter(
@@ -791,8 +838,9 @@ export class QueryGenerator {
     return words.join(' ');
   }
 
-  // replace a character with an adjacent key on qwerty layout
-  adjacentKeyTypo(word) {
+  // replace a character with an adjacent key on the keyboard.
+  // supports multilingual layouts (azerty, qwertz) via the language catalog
+  adjacentKeyTypo(word, langCode = 'en') {
     const keyboard = {
       'a': ['q', 's', 'w', 'z'],
       'b': ['v', 'g', 'h', 'n'],
@@ -822,6 +870,13 @@ export class QueryGenerator {
       'z': ['a', 's', 'x']
     };
 
+    // merge in language-specific layout overrides
+    if (langCode !== 'en') {
+      const langLayout = this.queryLanguages.getKeyboardLayout(langCode);
+      if (langLayout) {
+        Object.assign(keyboard, langLayout);
+      }
+    }
     const pos = Math.floor(Math.random() * word.length);
     const char = word[pos].toLowerCase();
 
@@ -866,5 +921,209 @@ export class QueryGenerator {
 
   randomElement(array) {
     return array[Math.floor(Math.random() * array.length)];
+  }
+
+  // generate a chain of logically connected queries for a session.
+  // real search sessions have a narrative: general -> specific -> comparison -> purchase.
+  // returns an array of queries that form a coherent research arc
+  generateSessionChain(topicData, personaEntities) {
+    const entities = this.mergedEntities(topicData, personaEntities);
+    const entity = this.randomElement(entities);
+    const entity2 = this.randomElement(entities.filter(e => e !== entity) || entities);
+
+    // common research arcs people go through
+    const chains = [
+      // discovery -> research -> comparison -> decision
+      [
+        `${entity}`,
+        `${entity} review`,
+        `${entity} vs ${entity2}`,
+        `best ${entity} ${this.currentYear()}`,
+        `${entity} where to buy`
+      ],
+      // problem -> solution -> how-to -> specific
+      [
+        `${entity} not working`,
+        `how to fix ${entity}`,
+        `${entity} troubleshooting guide`,
+        `${entity} replacement`
+      ],
+      // interest -> learning -> deep dive
+      [
+        `what is ${entity}`,
+        `${entity} for beginners`,
+        `${entity} tutorial step by step`,
+        `${entity} advanced tips`,
+        `${entity} community reddit`
+      ],
+      // need -> local search -> reviews -> contact
+      [
+        `${entity} near me`,
+        `best ${entity} in my area`,
+        `${entity} reviews`,
+        `${entity} hours today`,
+        `${entity} phone number`
+      ],
+      // health concern arc
+      [
+        `${entity} symptoms`,
+        `is ${entity} serious`,
+        `${entity} home remedies`,
+        `${entity} when to see doctor`
+      ],
+      // recipe/cooking arc
+      [
+        `${entity} recipe`,
+        `${entity} recipe easy`,
+        `${entity} ingredients list`,
+        `how long to cook ${entity}`,
+        `${entity} recipe variations`
+      ]
+    ];
+
+    const chain = this.randomElement(chains);
+    // return 2-4 queries from the chain (not always the full thing)
+    const start = 0;
+    const end = Math.min(chain.length, 2 + Math.floor(Math.random() * 3));
+    return chain.slice(start, end);
+  }
+
+  // inject temporal context that matches the actual current time.
+  // real queries reference "today", "tomorrow", "this weekend" etc.
+  // ~20% of queries get a temporal modifier
+  addTemporalContext(query) {
+    if (Math.random() > 0.20) return query;
+
+    const now = new Date();
+    const hour = now.getHours();
+    const day = now.getDay(); // 0=sun
+    const month = now.getMonth(); // 0=jan
+
+    const modifiers = [];
+
+    // time-of-day modifiers
+    if (hour < 12) {
+      modifiers.push('this morning', 'today');
+    } else if (hour < 17) {
+      modifiers.push('today', 'this afternoon');
+    } else {
+      modifiers.push('tonight', 'this evening', 'today');
+    }
+
+    // day-of-week modifiers
+    if (day === 0 || day === 6) {
+      modifiers.push('this weekend', 'today');
+    } else if (day === 5) {
+      modifiers.push('this weekend', 'friday night', 'tonight');
+    } else {
+      modifiers.push('this week', 'tomorrow');
+    }
+
+    // seasonal modifiers
+    const seasonal = this.getSeasonalModifiers(month);
+    modifiers.push(...seasonal);
+
+    const modifier = this.randomElement(modifiers);
+    return `${query} ${modifier}`;
+  }
+
+  // returns seasonal search modifiers based on month.
+  // uses northern hemisphere by default since we can't detect
+  // hemisphere without geolocation (which we deliberately avoid
+  // for privacy reasons, see the privacy policy)
+  getSeasonalModifiers(month) {
+    const seasons = {
+      // winter (dec-feb)
+      11: ['holiday', 'christmas gifts', 'winter', 'new years'],
+      0: ['new year', 'winter', 'tax season'],
+      1: ['valentines', 'winter', 'tax prep'],
+      // spring (mar-may)
+      2: ['spring', 'tax deadline', 'march madness'],
+      3: ['spring', 'easter', 'tax filing'],
+      4: ['spring', 'memorial day', 'summer plans'],
+      // summer (jun-aug)
+      5: ['summer', 'vacation', 'outdoor'],
+      6: ['summer', '4th of july', 'beach'],
+      7: ['summer', 'back to school', 'labor day'],
+      // fall (sep-nov)
+      8: ['fall', 'back to school', 'autumn'],
+      9: ['fall', 'halloween', 'autumn'],
+      10: ['thanksgiving', 'black friday', 'holiday shopping']
+    };
+    return seasons[month] || ['this season'];
+  }
+
+  // generate a voice-style query (natural language, full sentences).
+  // google says ~30% of searches are voice, but on desktop it's lower.
+  // we use ~12% to stay realistic for a browser extension
+  generateVoiceQuery(topicData, personaEntities) {
+    const entities = this.mergedEntities(topicData, personaEntities);
+    const entity = this.randomElement(entities);
+
+    const voicePatterns = [
+      `what's the best ${entity} right now`,
+      `hey where can i find ${entity} near me`,
+      `how do i ${this.randomElement(topicData.keywords)} ${entity}`,
+      `what's a good ${entity} for someone who's never tried it`,
+      `ok so i need to know about ${entity}`,
+      `what time does ${entity} close today`,
+      `is ${entity} open right now`,
+      `how far is the nearest ${entity}`,
+      `can you tell me about ${entity}`,
+      `what's the difference between ${entity} and ${this.randomElement(entities)}`,
+      `i want to learn more about ${entity}`,
+      `show me ${entity} options`,
+      `why is ${entity} so popular lately`,
+      `what should i know before trying ${entity}`,
+      `is there a ${entity} that's actually good and cheap`
+    ];
+
+    return this.randomElement(voicePatterns);
+  }
+
+  // generate a url-as-query (people pasting/typing urls into search bar).
+  // uses generic, benign, commonly-visited sites with plausible paths.
+  // these are privacy-safe since they're all public pages that millions
+  // of people visit. no niche or identifying urls.
+  generateURLQuery() {
+    const urlPatterns = [
+      'youtube.com',
+      'gmail.com',
+      'facebook.com login',
+      'twitter.com',
+      'amazon.com deals',
+      'reddit.com',
+      'instagram.com',
+      'linkedin.com',
+      'netflix.com',
+      'spotify.com',
+      'docs.google.com',
+      'drive.google.com',
+      'maps.google.com',
+      'weather.com',
+      'espn.com scores',
+      'craigslist.org',
+      'wikipedia.org',
+      'outlook.com',
+      'yahoo.com mail',
+      'twitch.tv',
+      'pinterest.com',
+      'ebay.com',
+      'target.com',
+      'walmart.com',
+      'bestbuy.com',
+      'nytimes.com',
+      'bbc.com news',
+      'cnn.com',
+      'imdb.com',
+      'yelp.com restaurants',
+      'zillow.com',
+      'indeed.com jobs',
+      'webmd.com',
+      'stackoverflow.com',
+      'github.com'
+    ];
+
+    return this.randomElement(urlPatterns);
   }
 }

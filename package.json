@@ -1,13 +1,15 @@
 {
   "name": "queryveil",
-  "version": "1.0.0",
-  "description": "Privacy-focused search query noise generator for Firefox",
+  "version": "1.3.0",
+  "description": "Privacy-focused search cover extension for Firefox",
+  "type": "module",
   "scripts": {
     "start": "web-ext run --source-dir=. --browser-console",
     "build": "web-ext build --source-dir=. --artifacts-dir=dist --overwrite-dest",
     "lint": "web-ext lint --source-dir=.",
     "sign": "web-ext sign --source-dir=. --artifacts-dir=dist",
-    "test": "echo \"Manual testing required - see TESTING.md\" && exit 0"
+    "test": "node --test benchmark/*.test.js",
+    "benchmark": "node benchmark/benchmark.js"
   },
   "keywords": [
     "privacy",
@@ -34,6 +36,18 @@
   },
   "engines": {
     "node": ">=16.0.0"
+  },
+  "webExt": {
+    "ignoreFiles": [
+      "benchmark",
+      "benchmark/**",
+      "dist/**",
+      "*.md",
+      "package.json",
+      "package-lock.json",
+      "icons/icon-32.png",
+      "icons/icon-64.png"
+    ]
   },
   "private": false
 }
