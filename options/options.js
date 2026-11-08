@@ -14,84 +14,83 @@ const topicCategories = [
   { id: 'hobbies', label: 'Hobbies' },
   { id: 'local', label: 'Local' },
   { id: 'general', label: 'General' },
-  { id: 'automotive', label: 'Automotive' },
+  { id: 'automotive', label: 'Cars' },
   { id: 'pets', label: 'Pets' },
-  { id: 'realestate', label: 'Real estate' },
+  { id: 'realestate', label: 'Housing' },
   { id: 'careers', label: 'Careers' },
   { id: 'parenting', label: 'Parenting' },
   { id: 'science', label: 'Science' },
   { id: 'sports', label: 'Sports' }
 ];
 
-const availableLanguages = [
-  { code: 'es', name: 'Spanish' },
-  { code: 'fr', name: 'French' },
-  { code: 'de', name: 'German' },
-  { code: 'pt', name: 'Portuguese' },
+// reviewed means a native speaker has gone over the catalog, see CONTRIBUTING.md
+const languages = [
+  { code: 'en', name: 'English', reviewed: true },
+  { code: 'es', name: 'Spanish', reviewed: true },
+  { code: 'fr', name: 'French', reviewed: true },
+  { code: 'de', name: 'German', reviewed: true },
+  { code: 'pt', name: 'Portuguese', reviewed: true },
   { code: 'ja', name: 'Japanese' },
-  { code: 'ko', name: 'Korean' },
+  { code: 'ko', name: 'Korean', reviewed: true },
   { code: 'ar', name: 'Arabic' },
   { code: 'hi', name: 'Hindi' },
   { code: 'it', name: 'Italian' },
   { code: 'nl', name: 'Dutch' },
   { code: 'tr', name: 'Turkish' },
-  { code: 'pl', name: 'Polish' },
+  { code: 'pl', name: 'Polish', reviewed: true },
+  { code: 'ro', name: 'Romanian', reviewed: true },
   { code: 'ru', name: 'Russian' }
 ];
+const extraLanguages = languages.filter(language => language.code !== 'en');
 
 const recommendedTopics = new Set([
-  'news',
-  'technology',
-  'food',
-  'finance',
-  'general',
-  'shopping',
-  'entertainment',
-  'local'
+  'news', 'technology', 'food', 'finance', 'general', 'shopping', 'entertainment', 'local'
 ]);
+
+const ENGINES = { google: 'Google', bing: 'Bing', duckduckgo: 'DuckDuckGo' };
+const RATES = { low: 6, medium: 12, high: 20 };
 
 let currentSettings = null;
 let personaList = [];
-let isDirty = false;
+let saveTimer = null;
+let savePending = false;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await Promise.all([loadSettings(), loadPersonas()]);
-  populateTopicGrid();
-  populateLanguageGrid();
-  updateUI();
+  const [status] = await Promise.all([loadStatus(), loadPersonas()]);
+  currentSettings = status?.settings || getDefaultSettings();
+  renderRunState(status);
+
+  buildHourSelects();
+  buildPersonaList();
+  buildLanguageControls();
+  buildTopicChips();
+  fillForm();
   setupEventListeners();
-  setDirty(false);
+  trackCurrentSection();
 
   browser.runtime.onMessage.addListener(message => {
-    if (message.type !== 'statusUpdated' || isDirty) return;
+    if (message.type !== 'statusUpdated') return;
+    renderRunState(message);
+    // don't stomp on edits that haven't been written yet
+    if (savePending) return;
     currentSettings = message.settings;
-    updateUI();
+    fillForm();
   });
 });
 
-async function loadSettings() {
+async function loadStatus() {
   try {
-    const response = await browser.runtime.sendMessage({ type: 'getStatus' });
-    currentSettings = response.settings;
+    return await browser.runtime.sendMessage({ type: 'getStatus' });
   } catch (error) {
     console.error('error loading settings:', error);
-    currentSettings = getDefaultSettings();
+    return null;
   }
 }
 
 async function loadPersonas() {
   try {
     const response = await browser.runtime.sendMessage({ type: 'getPersonas' });
-    if (!response?.personas) return;
-
-    personaList = response.personas;
-    const select = document.getElementById('persona');
-    for (const persona of personaList) {
-      const option = document.createElement('option');
-      option.value = persona.id;
-      option.textContent = persona.name;
-      select.appendChild(option);
-    }
+    personaList = response?.personas || [];
   } catch (error) {
     console.error('error loading personas:', error);
   }
@@ -99,8 +98,6 @@ async function loadPersonas() {
 
 function getDefaultSettings() {
   return {
-    enabled: false,
-    paused: false,
     intensity: 'medium',
     customRate: 12,
     searchEngine: 'google',
@@ -109,285 +106,335 @@ function getDefaultSettings() {
     enableTrends: true,
     persona: 'none',
     debugMode: false,
-    languages: {
-      primary: 'en',
-      enabled: [],
-      mixPercentage: 0
-    },
-    schedule: {
-      enabled: false,
-      startHour: 9,
-      endHour: 23
-    },
+    languages: { primary: 'en', enabled: [], mixPercentage: 0 },
+    schedule: { enabled: false, startHour: 9, endHour: 23 },
     topics: Object.fromEntries(topicCategories.map(topic => [topic.id, true]))
   };
 }
 
-function populateTopicGrid() {
-  const grid = document.getElementById('topicGrid');
-  grid.replaceChildren(...topicCategories.map(topic => createChoice(
-    `topic-${topic.id}`,
-    topic.label,
-    'topic-checkbox',
-    currentSettings?.topics?.[topic.id] !== false
+// building the dynamic parts of the form
+
+function buildHourSelects() {
+  for (const id of ['startHour', 'endHour']) {
+    const select = document.getElementById(id);
+    for (let hour = 0; hour < 24; hour++) {
+      select.add(new Option(`${String(hour).padStart(2, '0')}:00`, String(hour)));
+    }
+  }
+}
+
+function buildPersonaList() {
+  const options = [
+    { id: 'none', name: 'No persona', description: 'Broad, unrelated searches across your topics' },
+    ...personaList
+  ];
+  document.getElementById('personaList').replaceChildren(...options.map(persona => {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    const body = document.createElement('span');
+    const name = document.createElement('b');
+    const description = document.createElement('small');
+
+    input.type = 'radio';
+    input.name = 'persona';
+    input.value = persona.id;
+    name.textContent = persona.name;
+    description.textContent = persona.description;
+    body.append(name, description);
+    label.append(input, body);
+    return label;
+  }));
+}
+
+function buildLanguageControls() {
+  const primary = document.getElementById('primaryLanguage');
+  for (const language of languages) {
+    primary.add(new Option(language.name, language.code));
+  }
+
+  document.getElementById('languageChips').replaceChildren(...extraLanguages.map(language => (
+    createChip(`lang-${language.code}`, language.name, language.reviewed)
   )));
 }
 
-function populateLanguageGrid() {
-  const enabled = new Set(currentSettings?.languages?.enabled || []);
-  const grid = document.getElementById('languageGrid');
-  grid.replaceChildren(...availableLanguages.map(language => createChoice(
-    `lang-${language.code}`,
-    language.name,
-    'language-checkbox',
-    enabled.has(language.code)
+function buildTopicChips() {
+  document.getElementById('topicChips').replaceChildren(...topicCategories.map(topic => (
+    createChip(`topic-${topic.id}`, topic.label)
   )));
 }
 
-function createChoice(id, labelText, className, checked) {
-  const item = document.createElement('div');
-  const checkbox = document.createElement('input');
+function createChip(id, text, reviewed = false) {
   const label = document.createElement('label');
+  const input = document.createElement('input');
+  const body = document.createElement('span');
 
-  item.className = 'topic-item';
-  checkbox.type = 'checkbox';
-  checkbox.className = className;
-  checkbox.id = id;
-  checkbox.checked = checked;
-  label.className = 'topic-label';
-  label.htmlFor = id;
-  label.textContent = labelText;
-  item.append(checkbox, label);
-
-  return item;
+  input.type = 'checkbox';
+  input.id = id;
+  body.textContent = text;
+  if (reviewed) {
+    const mark = document.createElement('span');
+    mark.className = 'reviewed-mark';
+    mark.textContent = '✓';
+    mark.title = 'Reviewed by a native speaker';
+    body.append(mark);
+  }
+  label.append(input, body);
+  return label;
 }
 
-function updateUI() {
-  if (!currentSettings) return;
+// settings to form
 
-  setValue('intensity', currentSettings.intensity || 'medium');
-  setValue('customRate', currentSettings.customRate ?? 12);
-  setValue('searchEngine', currentSettings.searchEngine || 'google');
-  setChecked('enableResultClicks', currentSettings.enableResultClicks);
-  setChecked('enableAutosuggest', currentSettings.enableAutosuggest);
-  setChecked('enableTrends', currentSettings.enableTrends !== false);
-  setChecked('debugMode', currentSettings.debugMode);
-  setValue('persona', currentSettings.persona || 'none');
-  setChecked('scheduleEnabled', currentSettings.schedule?.enabled);
-  setValue('startHour', currentSettings.schedule?.startHour ?? 9);
-  setValue('endHour', currentSettings.schedule?.endHour ?? 23);
-  setValue('primaryLanguage', currentSettings.languages?.primary || 'en');
-  setValue('langMixPercentage', currentSettings.languages?.mixPercentage ?? 0);
+function fillForm() {
+  const settings = currentSettings;
+  if (!settings) return;
 
-  const enabledLanguages = new Set(currentSettings.languages?.enabled || []);
-  for (const language of availableLanguages) {
+  setRadio('intensity', settings.intensity || 'medium');
+  setValue('customRate', settings.customRate ?? 12);
+  setRadio('searchEngine', settings.searchEngine || 'google');
+  setRadio('persona', settings.persona || 'none');
+  setChecked('enableAutosuggest', settings.enableAutosuggest);
+  setChecked('enableTrends', settings.enableTrends !== false);
+  setChecked('enableResultClicks', settings.enableResultClicks);
+  setChecked('debugMode', settings.debugMode);
+  setChecked('scheduleEnabled', settings.schedule?.enabled);
+  setValue('startHour', settings.schedule?.startHour ?? 9);
+  setValue('endHour', settings.schedule?.endHour ?? 23);
+  setValue('primaryLanguage', settings.languages?.primary || 'en');
+  setValue('langMixPercentage', settings.languages?.mixPercentage || 15);
+
+  const enabledLanguages = new Set(settings.languages?.enabled || []);
+  for (const language of extraLanguages) {
     setChecked(`lang-${language.code}`, enabledLanguages.has(language.code));
   }
   for (const topic of topicCategories) {
-    setChecked(`topic-${topic.id}`, currentSettings.topics?.[topic.id] !== false);
+    setChecked(`topic-${topic.id}`, settings.topics?.[topic.id] !== false);
   }
 
-  updateConditionalFields();
-  updatePersonaDescription();
-  updateCounts();
-  updateSummary();
+  renderDerived();
 }
 
-function setupEventListeners() {
-  const form = document.getElementById('settingsForm');
-  form.addEventListener('submit', saveSettings);
-  form.addEventListener('change', handleFormChange);
-  form.addEventListener('input', handleFormChange);
+// everything on the page that depends on the current form values
+function renderDerived() {
+  const intensity = getRadio('intensity');
+  document.getElementById('customRateRow').hidden = intensity !== 'custom';
+  document.getElementById('customRateOut').textContent = `${getInt('customRate', 12)}/hr`;
 
-  document.getElementById('customRate').addEventListener('input', event => {
-    clampInput(event.target, 1, 60);
-  });
-  document.getElementById('langMixPercentage').addEventListener('input', event => {
-    clampInput(event.target, 0, 50);
-  });
-  document.getElementById('startHour').addEventListener('input', event => {
-    clampInput(event.target, 0, 23);
-  });
-  document.getElementById('endHour').addEventListener('input', event => {
-    clampInput(event.target, 0, 23);
-  });
-  document.getElementById('allTopicsBtn').addEventListener('click', () => {
-    setTopicSelection(() => true);
-  });
-  document.getElementById('recommendedTopicsBtn').addEventListener('click', () => {
-    setTopicSelection(topicId => recommendedTopics.has(topicId));
-  });
-  document.getElementById('panicBtn').addEventListener('click', panicStop);
-}
-
-function handleFormChange(event) {
-  if (event.target.id === 'persona') updatePersonaDescription();
-  updateConditionalFields();
-  updateCounts();
-  updateSummary();
-  setDirty(true);
-}
-
-function updateConditionalFields() {
-  const customRateGroup = document.getElementById('customRateGroup');
-  customRateGroup.style.display = getValue('intensity') === 'custom' ? 'flex' : 'none';
-
-  const scheduleEnabled = isChecked('scheduleEnabled');
-  const scheduleHours = document.getElementById('scheduleHours');
-  scheduleHours.style.opacity = scheduleEnabled ? '1' : '0.45';
-  for (const input of scheduleHours.querySelectorAll('input')) {
-    input.disabled = !scheduleEnabled;
+  // the main language can't also be an extra one
+  const primary = getValue('primaryLanguage');
+  for (const language of extraLanguages) {
+    const input = document.getElementById(`lang-${language.code}`);
+    input.disabled = language.code === primary;
+    if (input.disabled) input.checked = false;
+    input.parentElement.classList.toggle('is-disabled', input.disabled);
   }
 
-  const hasAdditionalLanguage = availableLanguages.some(language => isChecked(`lang-${language.code}`));
-  document.getElementById('langMixGroup').style.display = hasAdditionalLanguage ? 'flex' : 'none';
-}
+  const extraCount = extraLanguages.filter(language => isChecked(`lang-${language.code}`)).length;
+  document.getElementById('mixRow').hidden = extraCount === 0;
+  document.getElementById('langMixOut').textContent = `${getInt('langMixPercentage', 15)}%`;
 
-function updatePersonaDescription() {
-  const element = document.getElementById('personaDescription');
-  const selected = getValue('persona');
-  const persona = personaList.find(item => item.id === selected);
-
-  if (!persona) {
-    element.textContent = '';
-    element.style.display = 'none';
-    return;
-  }
-
-  element.textContent = persona.description;
-  element.style.display = 'block';
-}
-
-function updateCounts() {
   const topicCount = topicCategories.filter(topic => isChecked(`topic-${topic.id}`)).length;
-  const languageCount = availableLanguages.filter(language => isChecked(`lang-${language.code}`)).length;
-  document.getElementById('topicCount').textContent = `${topicCount} selected`;
-  document.getElementById('languageCount').textContent = `${languageCount} selected`;
+  document.getElementById('topicCount').textContent = `${topicCount} of ${topicCategories.length}`;
+  document.getElementById('topicWarning').hidden = topicCount >= 5 || getRadio('persona') !== 'none';
+
+  renderSchedule();
+  renderSummary(topicCount);
 }
 
-function updateSummary() {
-  const topicCount = topicCategories.filter(topic => isChecked(`topic-${topic.id}`)).length;
-  const intensity = getValue('intensity');
-  const pace = intensity === 'custom'
-    ? `${integerValue('customRate', 12)}/hr`
-    : intensity;
-  const engine = {
-    google: 'Google',
-    bing: 'Bing',
-    duckduckgo: 'DuckDuckGo'
-  }[getValue('searchEngine')];
-  const persona = getValue('persona');
-  const personaText = persona === 'none' ? 'Random profile' : 'Focused persona';
-  const trends = isChecked('enableTrends') ? 'live trends' : 'static topics';
+function renderSchedule() {
+  const enabled = isChecked('scheduleEnabled');
+  const start = getInt('startHour', 9);
+  const end = getInt('endHour', 23);
+  const row = document.getElementById('scheduleRow');
+  row.classList.toggle('is-disabled', !enabled);
+  for (const select of row.querySelectorAll('select')) select.disabled = !enabled;
 
-  const paceLabel = pace.replace(/^./, letter => letter.toUpperCase());
-  document.getElementById('profileSummary').textContent = `${paceLabel}, ${engine}, ${topicCount} topics`;
-  document.getElementById('profileDetail').textContent = `${personaText} with ${trends}`;
+  // active window is [start, end), wrapping past midnight when start > end
+  const spans = start === end
+    ? [[0, 24]]
+    : start < end ? [[start, end]] : [[start, 24], [0, end]];
+  const hours = spans.reduce((total, [from, to]) => total + to - from, 0);
+
+  const bar = document.getElementById('dayBar');
+  const pieces = spans.map(([from, to]) => {
+    const piece = document.createElement('span');
+    piece.style.left = `${(from / 24) * 100}%`;
+    piece.style.width = `${((to - from) / 24) * 100}%`;
+    return piece;
+  });
+  const now = new Date();
+  const marker = document.createElement('span');
+  marker.className = 'now';
+  marker.style.left = `${((now.getHours() + now.getMinutes() / 60) / 24) * 100}%`;
+  bar.replaceChildren(...pieces, marker);
+
+  let note = `${hours} hours a day`;
+  if (start === end) note = 'Same start and end runs all day';
+  else if (start > end && end > 0) note += ', overnight';
+  document.getElementById('hoursNote').textContent = note;
 }
 
-function setTopicSelection(predicate) {
-  for (const topic of topicCategories) {
-    setChecked(`topic-${topic.id}`, predicate(topic.id));
+function renderSummary(topicCount) {
+  const intensity = getRadio('intensity');
+  const rate = intensity === 'custom' ? getInt('customRate', 12) : RATES[intensity];
+  const personaId = getRadio('persona');
+  const persona = personaList.find(item => item.id === personaId);
+  const parts = [
+    `About ${rate} searches an hour on ${ENGINES[getRadio('searchEngine')]}`,
+    `${topicCount} topics`,
+    persona ? `posing as ${persona.name.toLowerCase()}` : 'no persona'
+  ];
+  if (isChecked('scheduleEnabled')) {
+    parts.push(`${pad(getInt('startHour', 9))}:00 to ${pad(getInt('endHour', 23))}:00`);
   }
-  updateCounts();
-  updateSummary();
-  setDirty(true);
+  document.getElementById('summary').textContent = `${parts.join(', ')}.`;
 }
 
-async function saveSettings(event) {
-  event.preventDefault();
-  const saveButton = document.getElementById('saveBtn');
-  const settings = collectSettings();
-
-  if (settings.intensity === 'custom' &&
-      (settings.customRate < 1 || settings.customRate > 60)) {
-    alert('Custom rate must be between 1 and 60 queries per hour.');
-    return;
-  }
-
-  saveButton.textContent = 'Saving...';
-  saveButton.disabled = true;
-
-  try {
-    await browser.runtime.sendMessage({
-      type: 'updateSettings',
-      settings
-    });
-    currentSettings = settings;
-    saveButton.textContent = 'Saved';
-    setDirty(false);
-
-    setTimeout(() => {
-      saveButton.textContent = 'Save settings';
-      saveButton.disabled = false;
-    }, 1200);
-  } catch (error) {
-    console.error('error saving settings:', error);
-    alert('Could not save settings.');
-    saveButton.textContent = 'Save settings';
-    saveButton.disabled = false;
-  }
+function renderRunState(status) {
+  if (!status) return;
+  const state = !status.isActive ? 'inactive' : status.isPaused ? 'paused' : 'active';
+  document.body.dataset.state = state;
+  document.getElementById('runState').textContent = {
+    active: 'Running',
+    paused: 'Paused',
+    inactive: 'Off'
+  }[state];
+  document.getElementById('panicBtn').hidden = state === 'inactive';
 }
+
+// form to settings
 
 function collectSettings() {
-  const topics = Object.fromEntries(
-    topicCategories.map(topic => [topic.id, isChecked(`topic-${topic.id}`)])
-  );
-  const enabledLanguages = availableLanguages
-    .filter(language => isChecked(`lang-${language.code}`))
-    .map(language => language.code);
-
+  // enabled and paused are left out on purpose so this page never
+  // overwrites a start or stop that happened in the popup
   return {
-    enabled: currentSettings?.enabled || false,
-    paused: currentSettings?.paused || false,
-    intensity: getValue('intensity'),
-    customRate: integerValue('customRate', 12),
-    searchEngine: getValue('searchEngine'),
-    enableResultClicks: isChecked('enableResultClicks'),
+    intensity: getRadio('intensity'),
+    customRate: getInt('customRate', 12),
+    searchEngine: getRadio('searchEngine'),
+    persona: getRadio('persona'),
     enableAutosuggest: isChecked('enableAutosuggest'),
     enableTrends: isChecked('enableTrends'),
-    persona: getValue('persona'),
+    enableResultClicks: isChecked('enableResultClicks'),
     debugMode: isChecked('debugMode'),
     languages: {
       primary: getValue('primaryLanguage'),
-      enabled: enabledLanguages,
-      mixPercentage: integerValue('langMixPercentage', 0)
+      enabled: extraLanguages
+        .filter(language => isChecked(`lang-${language.code}`))
+        .map(language => language.code),
+      mixPercentage: getInt('langMixPercentage', 15)
     },
     schedule: {
       enabled: isChecked('scheduleEnabled'),
-      startHour: integerValue('startHour', 9),
-      endHour: integerValue('endHour', 23)
+      startHour: getInt('startHour', 9),
+      endHour: getInt('endHour', 23)
     },
-    topics
+    topics: Object.fromEntries(topicCategories.map(topic => [topic.id, isChecked(`topic-${topic.id}`)]))
   };
 }
 
-async function panicStop() {
-  const confirmed = confirm(
-    'Stop all generated searches now? Your settings and local counters will stay in place.'
-  );
-  if (!confirmed) return;
+function queueSave(delay = 350) {
+  savePending = true;
+  setSaveState('Saving…');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, delay);
+}
 
+async function save() {
+  const settings = collectSettings();
+  try {
+    await browser.runtime.sendMessage({ type: 'updateSettings', settings });
+    currentSettings = { ...currentSettings, ...settings };
+    setSaveState('Saved', 'is-saved');
+  } catch (error) {
+    console.error('error saving settings:', error);
+    setSaveState('Couldn’t save, try again', 'is-error');
+  } finally {
+    savePending = false;
+  }
+}
+
+function setSaveState(text, className = '') {
+  const element = document.getElementById('saveState');
+  element.textContent = text;
+  element.className = `save-state ${className}`;
+}
+
+// events
+
+function setupEventListeners() {
+  const form = document.getElementById('settingsForm');
+  form.addEventListener('submit', event => event.preventDefault());
+  form.addEventListener('change', () => {
+    renderDerived();
+    queueSave();
+  });
+  // sliders update their readout live but only save once they settle
+  form.addEventListener('input', event => {
+    if (event.target.type !== 'range') return;
+    renderDerived();
+    queueSave(600);
+  });
+
+  document.getElementById('allTopicsBtn').addEventListener('click', () => {
+    setTopics(() => true);
+  });
+  document.getElementById('recommendedTopicsBtn').addEventListener('click', () => {
+    setTopics(id => recommendedTopics.has(id));
+  });
+  document.getElementById('panicBtn').addEventListener('click', panicStop);
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+}
+
+function setTopics(predicate) {
+  for (const topic of topicCategories) setChecked(`topic-${topic.id}`, predicate(topic.id));
+  renderDerived();
+  queueSave();
+}
+
+async function panicStop() {
+  if (!confirm('Stop all searches now? Your settings and counters stay as they are.')) return;
   try {
     await browser.runtime.sendMessage({ type: 'panic' });
-    window.close();
+    renderRunState({ isActive: false });
   } catch (error) {
     console.error('error stopping queryveil:', error);
   }
 }
 
-function setDirty(value) {
-  isDirty = value;
-  const state = document.getElementById('unsavedState');
-  state.textContent = value ? 'Unsaved changes' : 'No unsaved changes';
-  state.classList.toggle('is-dirty', value);
+function toggleTheme() {
+  const root = document.documentElement;
+  const current = root.dataset.theme ||
+    (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = current === 'dark' ? 'light' : 'dark';
+  root.dataset.theme = next;
+  try {
+    localStorage.setItem('theme', next);
+  } catch (e) {
+    // not persisted, still applies for this view
+  }
 }
 
-function clampInput(input, minimum, maximum) {
-  if (input.value === '') return;
-  const value = Number.parseInt(input.value, 10);
-  if (value < minimum) input.value = minimum;
-  if (value > maximum) input.value = maximum;
+// highlight the section in view in the sidebar
+function trackCurrentSection() {
+  const links = new Map(
+    [...document.querySelectorAll('.toc a')].map(link => [link.getAttribute('href').slice(1), link])
+  );
+  const observer = new IntersectionObserver(entries => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      for (const link of links.values()) link.classList.remove('is-current');
+      links.get(entry.target.id)?.classList.add('is-current');
+    }
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  for (const id of links.keys()) {
+    const section = document.getElementById(id);
+    if (section) observer.observe(section);
+  }
+}
+
+// small dom helpers
+
+function pad(value) {
+  return String(value).padStart(2, '0');
 }
 
 function getValue(id) {
@@ -395,7 +442,12 @@ function getValue(id) {
 }
 
 function setValue(id, value) {
-  document.getElementById(id).value = value;
+  document.getElementById(id).value = String(value);
+}
+
+function getInt(id, fallback) {
+  const value = Number.parseInt(getValue(id), 10);
+  return Number.isNaN(value) ? fallback : value;
 }
 
 function isChecked(id) {
@@ -406,7 +458,11 @@ function setChecked(id, value) {
   document.getElementById(id).checked = Boolean(value);
 }
 
-function integerValue(id, fallback) {
-  const value = Number.parseInt(getValue(id), 10);
-  return Number.isNaN(value) ? fallback : value;
+function getRadio(name) {
+  return document.querySelector(`input[name="${name}"]:checked`)?.value;
+}
+
+function setRadio(name, value) {
+  const input = document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if (input) input.checked = true;
 }

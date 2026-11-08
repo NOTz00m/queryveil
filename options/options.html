@@ -3,284 +3,203 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QueryVeil Settings</title>
+  <title>QueryVeil settings</title>
+  <script src="../shared/theme.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="page-header">
-    <div class="header-inner">
-      <a class="brand" href="#top" aria-label="QueryVeil settings">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            <path d="M8.5 12.2 10.8 14.5 15.8 9.5"/>
-          </svg>
-        </span>
-        <span>
-          <strong>QueryVeil</strong>
-          <small>Settings</small>
-        </span>
-      </a>
-      <nav class="page-nav" aria-label="Settings sections">
-        <a href="#profile">Profile</a>
+  <div class="layout">
+    <aside class="side">
+      <div class="brand">
+        <img src="../icons/queryveil-64.png" alt="" width="22" height="22">
+        <strong>QueryVeil</strong>
+      </div>
+
+      <nav class="toc" aria-label="Settings sections">
+        <a href="#pace">Pace</a>
+        <a href="#persona">Persona</a>
+        <a href="#behavior">Behavior</a>
+        <a href="#schedule">Schedule</a>
         <a href="#languages">Languages</a>
         <a href="#topics">Topics</a>
       </nav>
-    </div>
-  </header>
 
-  <main id="top" class="page-shell">
-    <section class="intro">
-      <div>
-        <span class="eyebrow">Local configuration</span>
-        <h1>Build the cover you want</h1>
-        <p>Tune the decoy profile, timing, and language mix. Every setting stays in Firefox.</p>
+      <div class="side-foot">
+        <p class="run-state"><span class="dot" aria-hidden="true"></span><span id="runState">Off</span></p>
+        <p id="saveState" class="save-state" aria-live="polite">Changes save automatically</p>
+        <button id="panicBtn" class="btn btn-stop" type="button">Stop everything</button>
+        <button id="themeToggle" class="text-btn" type="button">Switch theme</button>
       </div>
-      <div class="profile-summary">
-        <span>Current setup</span>
-        <strong id="profileSummary">Medium, Google, 20 topics</strong>
-        <small id="profileDetail">Random profile with live trends</small>
-      </div>
-    </section>
+    </aside>
 
-    <form id="settingsForm">
-      <div class="settings-grid">
-        <section class="settings-card" aria-labelledby="generalHeading">
-          <div class="card-heading">
-            <div>
-              <h2 id="generalHeading">General</h2>
-              <p>Control volume and destination</p>
+    <main class="content">
+      <header class="page-head">
+        <h1>Settings</h1>
+        <p id="summary" class="summary">Medium pace on Google, 20 topics, no persona.</p>
+      </header>
+
+      <form id="settingsForm" novalidate>
+        <!-- pace -->
+        <section id="pace" class="group" aria-labelledby="paceHeading">
+          <h2 id="paceHeading">Pace</h2>
+
+          <div class="row row-stack">
+            <div class="row-text">
+              <span class="label" id="intensityLabel">Search rate</span>
+              <span class="help">Searches are spread out with human-like gaps, not fired on a fixed timer.</span>
+            </div>
+            <div class="segmented" role="radiogroup" aria-labelledby="intensityLabel">
+              <label><input type="radio" name="intensity" value="low"><span>Low <small>6/hr</small></span></label>
+              <label><input type="radio" name="intensity" value="medium"><span>Medium <small>12/hr</small></span></label>
+              <label><input type="radio" name="intensity" value="high"><span>High <small>20/hr</small></span></label>
+              <label><input type="radio" name="intensity" value="custom"><span>Custom</span></label>
             </div>
           </div>
 
-          <div class="field-row">
-            <label for="intensity">
-              <strong>Search intensity</strong>
-              <small>The target pace for generated queries</small>
+          <div class="row" id="customRateRow">
+            <label class="row-text" for="customRate">
+              <span class="label">Custom rate</span>
+              <span class="help">1 to 60 searches an hour</span>
             </label>
-            <select id="intensity">
-              <option value="low">Low, about 6/hr</option>
-              <option value="medium">Medium, about 12/hr</option>
-              <option value="high">High, about 20/hr</option>
-              <option value="custom">Custom</option>
-            </select>
+            <div class="range">
+              <input type="range" id="customRate" min="1" max="60" step="1" value="12">
+              <output id="customRateOut" for="customRate">12/hr</output>
+            </div>
           </div>
 
-          <div class="field-row" id="customRateGroup">
-            <label for="customRate">
-              <strong>Queries per hour</strong>
-              <small>Between 1 and 60</small>
-            </label>
-            <input type="number" id="customRate" min="1" max="60" inputmode="numeric" value="12">
-          </div>
-
-          <div class="field-row">
-            <label for="searchEngine">
-              <strong>Search engine</strong>
-              <small>Where generated traffic is sent</small>
-            </label>
-            <select id="searchEngine">
-              <option value="google">Google</option>
-              <option value="bing">Bing</option>
-              <option value="duckduckgo">DuckDuckGo</option>
-            </select>
+          <div class="row row-stack">
+            <div class="row-text">
+              <span class="label" id="engineLabel">Search engine</span>
+              <span class="help">Pick the one you actually use, cover only helps where your real searches go.</span>
+            </div>
+            <div class="segmented" role="radiogroup" aria-labelledby="engineLabel">
+              <label><input type="radio" name="searchEngine" value="google"><span>Google</span></label>
+              <label><input type="radio" name="searchEngine" value="bing"><span>Bing</span></label>
+              <label><input type="radio" name="searchEngine" value="duckduckgo"><span>DuckDuckGo</span></label>
+            </div>
           </div>
         </section>
 
-        <section id="profile" class="settings-card" aria-labelledby="profileHeading">
-          <div class="card-heading">
-            <div>
-              <h2 id="profileHeading">Ghost profile</h2>
-              <p>Give trackers a coherent decoy</p>
-            </div>
-          </div>
-
-          <div class="field-row">
-            <label for="persona">
-              <strong>Active persona</strong>
-              <small>Focused personas benchmark best</small>
-            </label>
-            <select id="persona">
-              <option value="none">None, broad noise</option>
-            </select>
-          </div>
-          <p id="personaDescription" class="persona-desc"></p>
+        <!-- persona -->
+        <section id="persona" class="group" aria-labelledby="personaHeading">
+          <h2 id="personaHeading">Persona</h2>
+          <p class="group-help">A persona makes the cover look like one consistent person instead of random noise. In the benchmark, a focused persona hid real interests best.</p>
+          <div id="personaList" class="persona-list" role="radiogroup" aria-labelledby="personaHeading"></div>
         </section>
 
-        <section class="settings-card" aria-labelledby="featuresHeading">
-          <div class="card-heading">
-            <div>
-              <h2 id="featuresHeading">Behavior</h2>
-              <p>Make request patterns less mechanical</p>
-            </div>
-          </div>
+        <!-- behavior -->
+        <section id="behavior" class="group" aria-labelledby="behaviorHeading">
+          <h2 id="behaviorHeading">Behavior</h2>
 
-          <div class="toggle-row">
-            <span>
-              <strong>Autosuggest simulation</strong>
-              <small>Send incremental prefixes before a full query</small>
+          <label class="row" for="enableAutosuggest">
+            <span class="row-text">
+              <span class="label">Type it out</span>
+              <span class="help">Send 3 to 6 autosuggest requests before each search, like someone typing in the box.</span>
             </span>
-            <label class="switch">
-              <input type="checkbox" id="enableAutosuggest">
-              <span class="switch-track" aria-hidden="true"></span>
-              <span class="sr-only">Enable autosuggest simulation</span>
-            </label>
-          </div>
+            <input type="checkbox" class="switch" id="enableAutosuggest">
+          </label>
 
-          <div class="toggle-row">
-            <span>
-              <strong>Live trend injection</strong>
-              <small>Mix locally fetched Google Trends into queries</small>
+          <label class="row" for="enableTrends">
+            <span class="row-text">
+              <span class="label">Use what's trending</span>
+              <span class="help">Mix in Google Trends headlines. The feed is fetched at most every 3 hours.</span>
             </span>
-            <label class="switch">
-              <input type="checkbox" id="enableTrends">
-              <span class="switch-track" aria-hidden="true"></span>
-              <span class="sr-only">Enable live trend injection</span>
-            </label>
-          </div>
+            <input type="checkbox" class="switch" id="enableTrends">
+          </label>
 
-          <div class="toggle-row">
-            <span>
-              <strong>Result click decisions</strong>
-              <small>Experimental, no result-page request is sent yet</small>
+          <label class="row" for="enableResultClicks">
+            <span class="row-text">
+              <span class="label">Open results</span>
+              <span class="help">About 4 in 10 searches open one real link from the results page, usually near the top. Only the page itself is requested, nothing on it runs. Skipped when the engine returns no links.</span>
             </span>
-            <label class="switch">
-              <input type="checkbox" id="enableResultClicks">
-              <span class="switch-track" aria-hidden="true"></span>
-              <span class="sr-only">Enable result click decisions</span>
-            </label>
-          </div>
+            <input type="checkbox" class="switch" id="enableResultClicks">
+          </label>
 
-          <div class="toggle-row">
-            <span>
-              <strong>Debug mode</strong>
-              <small>Write extra detail to the local browser console</small>
+          <label class="row" for="debugMode">
+            <span class="row-text">
+              <span class="label">Debug log</span>
+              <span class="help">Print each generated search to the browser console. Nothing leaves your machine.</span>
             </span>
-            <label class="switch">
-              <input type="checkbox" id="debugMode">
-              <span class="switch-track" aria-hidden="true"></span>
-              <span class="sr-only">Enable debug mode</span>
-            </label>
-          </div>
+            <input type="checkbox" class="switch" id="debugMode">
+          </label>
         </section>
 
-        <section class="settings-card" aria-labelledby="scheduleHeading">
-          <div class="card-heading">
-            <div>
-              <h2 id="scheduleHeading">Schedule</h2>
-              <p>Keep activity inside your normal hours</p>
+        <!-- schedule -->
+        <section id="schedule" class="group" aria-labelledby="scheduleHeading">
+          <h2 id="scheduleHeading">Schedule</h2>
+
+          <label class="row" for="scheduleEnabled">
+            <span class="row-text">
+              <span class="label">Only run during set hours</span>
+              <span class="help">Searches at 4 am stand out if you're never up at 4 am.</span>
+            </span>
+            <input type="checkbox" class="switch" id="scheduleEnabled">
+          </label>
+
+          <div class="row row-stack" id="scheduleRow">
+            <div class="hours">
+              <label>From <select id="startHour"></select></label>
+              <label>to <select id="endHour"></select></label>
+              <span id="hoursNote" class="help"></span>
             </div>
-            <label class="switch heading-switch">
-              <input type="checkbox" id="scheduleEnabled">
-              <span class="switch-track" aria-hidden="true"></span>
-              <span class="sr-only">Enable schedule</span>
-            </label>
-          </div>
-
-          <div id="scheduleHours" class="schedule-fields">
-            <label for="startHour">
-              <span>Starts</span>
-              <input type="number" id="startHour" min="0" max="23" inputmode="numeric" value="9">
-            </label>
-            <span class="schedule-divider">to</span>
-            <label for="endHour">
-              <span>Ends</span>
-              <input type="number" id="endHour" min="0" max="23" inputmode="numeric" value="23">
-            </label>
-          </div>
-          <p class="card-note">Use 24-hour values. Overnight ranges such as 22 to 6 are supported.</p>
-        </section>
-
-        <section id="languages" class="settings-card settings-card-wide" aria-labelledby="languagesHeading">
-          <div class="card-heading">
-            <div>
-              <h2 id="languagesHeading">Languages</h2>
-              <p>Match your real language or add deliberate cross-language cover</p>
-            </div>
-          </div>
-
-          <div class="field-row compact-field">
-            <label for="primaryLanguage">
-              <strong>Primary language</strong>
-              <small>Used whenever the additional-language roll does not trigger</small>
-            </label>
-            <select id="primaryLanguage">
-              <option value="en">English</option>
-              <option value="es">Spanish</option>
-              <option value="fr">French</option>
-              <option value="de">German</option>
-              <option value="pt">Portuguese</option>
-              <option value="ja">Japanese</option>
-              <option value="ko">Korean</option>
-              <option value="ar">Arabic</option>
-              <option value="hi">Hindi</option>
-              <option value="it">Italian</option>
-              <option value="nl">Dutch</option>
-              <option value="tr">Turkish</option>
-              <option value="pl">Polish</option>
-              <option value="ru">Russian</option>
-            </select>
-          </div>
-
-          <div class="choice-block">
-            <div class="choice-heading">
-              <div>
-                <strong>Additional languages</strong>
-                <small>Translations still need native-speaker review in several languages</small>
-              </div>
-              <span id="languageCount" class="count-pill">0 selected</span>
-            </div>
-            <div id="languageGrid" class="choice-grid"></div>
-          </div>
-
-          <div class="field-row compact-field" id="langMixGroup">
-            <label for="langMixPercentage">
-              <strong>Additional language mix</strong>
-              <small>0 to 50 percent of generated queries</small>
-            </label>
-            <div class="number-suffix">
-              <input type="number" id="langMixPercentage" min="0" max="50" inputmode="numeric" value="15">
-              <span>%</span>
+            <div class="day" aria-hidden="true">
+              <div id="dayBar" class="day-bar"></div>
+              <div class="day-scale"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
             </div>
           </div>
         </section>
 
-        <section id="topics" class="settings-card settings-card-wide" aria-labelledby="topicsHeading">
-          <div class="card-heading card-heading-actions">
-            <div>
-              <h2 id="topicsHeading">Topic coverage</h2>
-              <p>Broader cover raises diversity, focused personas raise coherence</p>
-            </div>
-            <div class="mini-actions">
-              <button id="recommendedTopicsBtn" type="button">Recommended</button>
-              <button id="allTopicsBtn" type="button">Select all</button>
-            </div>
+        <!-- languages -->
+        <section id="languages" class="group" aria-labelledby="languagesHeading">
+          <h2 id="languagesHeading">Languages</h2>
+
+          <div class="row">
+            <label class="row-text" for="primaryLanguage">
+              <span class="label">Main language</span>
+              <span class="help">Match the language you really search in.</span>
+            </label>
+            <select id="primaryLanguage"></select>
           </div>
 
-          <div class="choice-heading">
-            <span class="benchmark-hint">Keep at least five enabled unless a persona is doing the focusing</span>
-            <span id="topicCount" class="count-pill">20 selected</span>
+          <div class="row row-stack">
+            <div class="row-text">
+              <span class="label">Mix in</span>
+              <span class="help">Languages marked <span class="reviewed-mark" aria-hidden="true">✓</span> have been checked by a native speaker. Others may read a bit off.</span>
+            </div>
+            <div id="languageChips" class="chips"></div>
           </div>
-          <div id="topicGrid" class="choice-grid topic-grid"></div>
+
+          <div class="row" id="mixRow">
+            <label class="row-text" for="langMixPercentage">
+              <span class="label">How often</span>
+              <span class="help">Share of searches in one of the extra languages</span>
+            </label>
+            <div class="range">
+              <input type="range" id="langMixPercentage" min="5" max="50" step="5" value="15">
+              <output id="langMixOut" for="langMixPercentage">15%</output>
+            </div>
+          </div>
         </section>
-      </div>
 
-      <aside class="privacy-note">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-        </svg>
-        <p><strong>Still local.</strong> QueryVeil stores settings, counters, and simulator state in Firefox. It does not read or save your real search history.</p>
-      </aside>
+        <!-- topics -->
+        <section id="topics" class="group" aria-labelledby="topicsHeading">
+          <div class="group-head">
+            <h2 id="topicsHeading">Topics</h2>
+            <span class="topic-tools">
+              <span id="topicCount" class="count">20 of 20</span>
+              <button id="recommendedTopicsBtn" class="text-btn" type="button">Recommended</button>
+              <button id="allTopicsBtn" class="text-btn" type="button">All</button>
+            </span>
+          </div>
+          <p class="group-help">Broad coverage makes the cover harder to filter out. With a persona on, its interests are weighted on top of these.</p>
+          <div id="topicChips" class="chips"></div>
+          <p id="topicWarning" class="warning" hidden>Fewer than five topics makes the cover easy to separate from real searches unless a persona is set.</p>
+        </section>
 
-      <div class="action-bar">
-        <span id="unsavedState" class="unsaved-state" aria-live="polite">No unsaved changes</span>
-        <div>
-          <button id="panicBtn" class="button button-danger" type="button">Stop immediately</button>
-          <button id="saveBtn" class="button button-primary" type="submit">Save settings</button>
-        </div>
-      </div>
-    </form>
-  </main>
+        <p class="local-note">Settings, counters and timestamps live in Firefox's extension storage. QueryVeil never reads your real searches or history, and there's no QueryVeil server.</p>
+      </form>
+    </main>
+  </div>
 
   <script src="options.js"></script>
 </body>

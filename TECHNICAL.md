@@ -62,7 +62,7 @@ Exact memory, CPU, battery, and bandwidth vary by Firefox version, platform, pro
 - Search providers can rate-limit or block automated-looking traffic.
 - Seasonal topic weighting assumes the northern hemisphere.
 - Translation quality varies by language.
-- Result-click mode currently makes the click decision but does not issue a result-page request.
+- Result clicks fetch one real link from the returned results page as a single document request. Nothing on that page runs, and the request carries no search-engine referrer. When an engine serves a page without usable links (Google often does for non-JavaScript clients), the click is skipped.
 - Equal schedule start and end hours are treated as active all day.
 - QueryVeil currently targets Firefox.
 

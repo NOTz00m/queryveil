@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: July 27, 2026**
+**Last updated: November 8, 2026**
 
 QueryVeil is built around a simple rule: it cannot collect data it never reads or records.
 
@@ -23,7 +23,8 @@ Firefox local extension storage contains:
 
 - Extension settings, including intensity, topics, schedule, persona, languages, and feature switches
 - Simulator state used to keep timing consistent across service-worker restarts
-- Total and per-session generated-query counters
+- Total and per-session generated-query counters, plus result-click counts
+- Timestamps of generated searches and clicks from the last 24 hours (no query text), used for the popup activity strip
 - Cached Google Trends titles and the cache timestamp
 - Active, paused, or stopped state
 
@@ -35,6 +36,7 @@ QueryVeil communicates only with the services needed for enabled features:
 
 - The selected search engine receives generated searches.
 - Search-engine autosuggest endpoints receive partial query prefixes when autosuggest simulation is enabled.
+- When result clicks are enabled, the site behind one link on a returned results page receives a single page request. The response is never read or rendered.
 - The public Google Trends RSS feed is fetched when trend injection is enabled and its local cache is stale.
 
 Requests are made directly from the extension. There is no QueryVeil server, account, telemetry endpoint, or intermediary. Search providers can apply their own cookies, logging, and privacy policies to generated traffic.
@@ -44,8 +46,9 @@ Requests are made directly from the extension. There is no QueryVeil server, acc
 1. The extension generates a query in memory.
 2. Optional autosuggest prefixes are sent to the selected search engine.
 3. The full query is sent.
-4. The query text is discarded.
-5. A local numeric counter is incremented.
+4. If result clicks are enabled, one link from the results page may be fetched.
+5. The query text and results page are discarded.
+6. A local counter and timestamp are recorded.
 
 Debug mode can print generated query details to the local Firefox console. Nothing in that console is transmitted by QueryVeil.
 

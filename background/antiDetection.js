@@ -236,10 +236,21 @@ export class AntiDetection {
 
       this.resetFailureTracking();
 
+      // only read the body when a click is planned, otherwise let it drop
+      let body = '';
+      if (options.readBody) {
+        try {
+          body = await response.text();
+        } catch (e) {
+          body = '';
+        }
+      }
+
       return {
         success: true,
         status: response.status,
-        url: url
+        url: url,
+        body
       };
 
     } catch (error) {
@@ -251,43 +262,109 @@ export class AntiDetection {
     }
   }
 
-  // simulate clicking a search result fetches the result page
-  // with the search engine as referrer, then waits (dwell time)
-  async simulateResultClick(resultURL, searchURL, dwellTime) {
+  // simulate clicking a search result: wait while the page gets scanned,
+  // then fetch the result page itself. no-cors means we need no extra host
+  // permissions and never read the response, nothing on that page runs
+  // (no scripts, images, or trackers), it's a single document request
+  async simulateResultClick(resultURL, options = {}) {
     try {
       await this.delay(this.getClickDelay());
 
       const response = await fetch(resultURL, {
         method: 'GET',
+        mode: 'no-cors',
         headers: {
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Referer': searchURL,
-          'DNT': '1',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'cross-site',
-          'Sec-Fetch-User': '?1'
+          'Accept-Language': this.getHeaders(null, options.language)['Accept-Language']
         },
         credentials: 'include',
+        cache: 'default',
         redirect: 'follow'
       });
 
-      await this.delay(dwellTime);
-
-      return {
-        success: response.ok,
-        dwellTime: dwellTime
-      };
-
+      // opaque responses report status 0, getting one back means it went out
+      return { success: response.type === 'opaque' || response.ok, url: resultURL };
     } catch (error) {
-      return {
-        success: false,
-        error: error.message
-      };
+      return { success: false, error: error.message };
     }
+  }
+
+  // pull organic result links out of a results page.
+  // each engine wraps outbound links differently, so unwrap those first,
+  // then drop anything that points back at the engine itself
+  extractResultLinks(searchEngine, html) {
+    if (!html) return [];
+
+    const seen = new Set();
+    const links = [];
+    const pattern = /href\s*=\s*["']([^"'<>\s]+)["']/gi;
+    let match;
+
+    while ((match = pattern.exec(html)) && links.length < 10) {
+      const url = this.unwrapResultLink(this.decodeEntities(match[1]));
+      if (!url || seen.has(url) || !this.isOrganicResult(url)) continue;
+      seen.add(url);
+      links.push(url);
+    }
+
+    return links;
+  }
+
+  decodeEntities(value) {
+    return value
+      .replace(/&amp;/g, '&')
+      .replace(/&#x2F;/gi, '/')
+      .replace(/&#39;/g, "'")
+      .replace(/&quot;/g, '"');
+  }
+
+  unwrapResultLink(href) {
+    try {
+      if (href.startsWith('//')) href = `https:${href}`;
+
+      // google: /url?q=<target>&sa=...
+      if (href.startsWith('/url?') || href.includes('google.com/url?')) {
+        const params = new URL(href, 'https://www.google.com').searchParams;
+        return params.get('q') || params.get('url');
+      }
+
+      // duckduckgo: //duckduckgo.com/l/?uddg=<encoded target>
+      if (href.includes('/l/?') && href.includes('uddg=')) {
+        return new URL(href, 'https://duckduckgo.com').searchParams.get('uddg');
+      }
+
+      // bing: /ck/a?...&u=a1<base64url target>
+      if (href.includes('bing.com/ck/a?') || href.startsWith('/ck/a?')) {
+        const encoded = new URL(href, 'https://www.bing.com').searchParams.get('u');
+        if (!encoded?.startsWith('a1')) return null;
+        const base64 = encoded.slice(2).replace(/-/g, '+').replace(/_/g, '/');
+        return atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
+      }
+
+      return href;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  isOrganicResult(url) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch (e) {
+      return false;
+    }
+
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+    if (/\.(js|css|png|jpe?g|gif|svg|ico|webp|woff2?|json|xml)$/i.test(parsed.pathname)) return false;
+
+    const host = parsed.hostname.toLowerCase();
+    const engineHosts = [
+      'google.', 'gstatic.', 'googleapis.', 'googleusercontent.', 'googleadservices.',
+      'doubleclick.', 'bing.com', 'bing.net', 'microsoft.com', 'live.com',
+      'duckduckgo.com', 'duck.com', 'w3.org', 'schema.org'
+    ];
+    return !engineHosts.some(engineHost => host.includes(engineHost));
   }
 
   // 2-8 seconds to scan results before clicking matches eye tracking studies
@@ -363,19 +440,6 @@ export class AntiDetection {
 
   randomElement(array) {
     return array[Math.floor(Math.random() * array.length)];
-  }
-
-  // generate plausible result urls for click simulation
-  generateMockResultURL(query, position) {
-    const domains = [
-      'wikipedia.org', 'reddit.com', 'youtube.com', 'amazon.com',
-      'stackoverflow.com', 'medium.com', 'github.com', 'nytimes.com',
-      'bbc.com', 'cnn.com'
-    ];
-
-    const domain = this.randomElement(domains);
-    const slug = query.toLowerCase().replace(/\s+/g, '-').substring(0, 50);
-    return `https://www.${domain}/${slug}`;
   }
 
   getStats() {

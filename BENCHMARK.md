@@ -56,7 +56,7 @@ The effectiveness trials use five synthetic but human-shaped search profiles, re
 - All generated languages were recognized by the shipped language catalog.
 - Paused, disabled, and out-of-schedule configurations produced no search events.
 
-> **Result-click limitation:** the current service worker makes a realistic click decision but does not issue a result-page request. The benchmark measures the decision path, not live result engagement. Enabling it currently does not improve the effectiveness score.
+> **Result-click limitation:** the service worker now opens one real link from the returned results page, but the benchmark runs offline and only measures the click decision, not live result engagement. Enabling it does not change the effectiveness score.
 
 ## Methodology
 

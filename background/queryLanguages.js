@@ -123,28 +123,42 @@ export class QueryLanguages {
         searchParams: { hl: 'de', lr: 'lang_de' },
         keywords: [
           'wie', 'beste', 'wo', 'warum', 'wann', 'preis', 'kostenlos',
-          'rezept', 'in der nahe', 'bewertung', 'gunstig', 'kaufen',
-          'anleitung', 'tipps', 'vergleich', 'erfahrungen'
+          'rezept', 'in der nähe', 'erfahrungen', 'günstig', 'kaufen',
+          'anleitung', 'tipps', 'vergleich', 'test', 'öffnungszeiten',
+          'heute geöffnet', 'angebot', 'gebraucht', 'termin', 'lieferung',
+          'kosten', 'was ist', 'bewertungen'
         ],
         entities: [
           'restaurant berlin', 'wetter morgen', 'bahnticket',
-          'stellenangebote', 'wohnung mieten', 'rezept kuchen',
-          'film kino', 'nachrichten deutschland', 'apotheke notdienst',
-          'hausarzt', 'kfz versicherung', 'kredit vergleich',
-          'online kurs', 'friseur', 'handwerker', 'supermarkt',
-          'zahnarzt', 'umzug', 'steuerberater', 'rechtsanwalt'
+          'deutschlandticket', 'stellenangebote', 'wohnung mieten',
+          'rezept kuchen', 'kinoprogramm', 'nachrichten', 'apotheke notdienst',
+          'hausarzt', 'kfz versicherung', 'kredit vergleich', 'online kurs',
+          'friseur', 'handwerker', 'supermarkt', 'zahnarzt', 'umzugsfirma',
+          'steuerberater', 'rechtsanwalt', 'fitnessstudio', 'bäckerei',
+          'tankstelle', 'autowerkstatt', 'stromanbieter', 'handyvertrag',
+          'laptop', 'konzertkarten', 'urlaub mit kindern', 'lieferdienst',
+          'baumarkt', 'tierarzt', 'bürgeramt termin', 'flohmarkt'
         ],
         templates: [
-          'wie macht man {entity}',
+          '{entity} in der nähe',
           'beste {entity} {year}',
-          '{entity} in der nahe',
-          'wo kaufen {entity}',
           '{entity} preis',
-          '{entity} bewertung',
-          '{entity} gunstig',
-          '{entity} rezept einfach',
+          '{entity} erfahrungen',
+          '{entity} günstig',
+          'was kostet {entity}',
+          '{entity} öffnungszeiten',
+          '{entity} heute geöffnet',
+          '{entity} test {year}',
+          '{entity} vergleich {year}',
+          '{entity} online buchen',
+          '{entity} angebot',
+          '{entity} gebraucht',
+          'wo finde ich {entity}',
+          '{entity} bewertungen',
+          '{entity} tipps',
           '{entity} kostenlos',
-          '{entity} vergleich {year}'
+          '{keyword} {entity}',
+          '{entity} {keyword} {year}'
         ]
       },
 
@@ -463,6 +477,53 @@ export class QueryLanguages {
           'rezerwacja {entity} online',
           'promocja {entity} {year}',
           '{entity} uzywany',
+          '{keyword} {entity}',
+          '{entity} {keyword} {year}'
+        ]
+      },
+
+      // romanian is usually typed without diacritics, so these skip them on purpose
+      ro: {
+        code: 'ro',
+        name: 'Romanian',
+        acceptLanguage: 'ro-RO,ro;q=0.9,en;q=0.5',
+        searchParams: { hl: 'ro', lr: 'lang_ro' },
+        keywords: [
+          'cum', 'cel mai bun', 'unde', 'de ce', 'cand', 'pret', 'gratis',
+          'reteta', 'langa mine', 'pareri', 'ieftin', 'cumpar', 'descarca',
+          'tutorial', 'sfaturi', 'comparatie', 'oferta', 'program',
+          'deschis acum', 'harta', 'rezultate', 'rezervare', 'livrare',
+          'second hand', 'olx', 'emag'
+        ],
+        entities: [
+          'restaurant bucuresti', 'vremea maine', 'bilet tren cfr',
+          'locuri de munca', 'apartament de inchiriat', 'reteta sarmale',
+          'filme cinema', 'stiri romania', 'farmacie non stop',
+          'medic de familie', 'asigurare rca', 'credit ipotecar',
+          'curs online', 'frizerie', 'instalator', 'supermarket',
+          'stomatolog', 'firma mutari', 'contabil', 'avocat',
+          'sala de fitness', 'service auto', 'benzinarie',
+          'abonament telefon', 'laptop', 'bilete concert',
+          'vacanta la munte', 'mancare la domiciliu', 'mobila',
+          'veterinar', 'programare pasaport', 'cazare mamaia', 'mers tren'
+        ],
+        templates: [
+          '{entity} langa mine',
+          'cel mai bun {entity} {year}',
+          '{entity} pret',
+          '{entity} pareri',
+          '{entity} ieftin',
+          'unde gasesc {entity}',
+          'cat costa {entity}',
+          '{entity} program',
+          '{entity} deschis acum',
+          '{entity} {year}',
+          '{entity} oferta',
+          '{entity} online',
+          'rezervare {entity}',
+          '{entity} second hand',
+          '{entity} recomandari',
+          '{entity} forum',
           '{keyword} {entity}',
           '{entity} {keyword} {year}'
         ]

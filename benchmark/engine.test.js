@@ -28,7 +28,7 @@ test('settings matrix covers every shipped catalog value', () => {
   assert.ok(matrix.cases.length > 700);
   assert.equal(catalog.topicIds.length, 20);
   assert.equal(catalog.personaIds.length, 8);
-  assert.equal(catalog.languageCodes.length, 14);
+  assert.equal(catalog.languageCodes.length, 15);
 
   for (const topicId of catalog.topicIds) {
     assert.ok(matrix.cases.some(item => enabledTopics(item.settings).join(',') === topicId));
@@ -46,9 +46,9 @@ test('settings matrix covers every shipped catalog value', () => {
   }
 });
 
-test('only reviewed language catalogs and russian use the expanded query pools', () => {
+test('only reviewed language catalogs, romanian and russian use the expanded query pools', () => {
   const languages = new QueryLanguages().languages;
-  const expandedCodes = new Set(['es', 'fr', 'pt', 'ko', 'pl', 'ru']);
+  const expandedCodes = new Set(['es', 'fr', 'de', 'pt', 'ko', 'pl', 'ro', 'ru']);
 
   for (const [code, language] of Object.entries(languages)) {
     if (code === 'en') continue;

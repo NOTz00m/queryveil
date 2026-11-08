@@ -12,7 +12,7 @@ The multilingual query templates in `background/queryLanguages.js` were initiall
 | ---------- | --------------------- | ---------- |
 | Spanish    | `EthereaOne`          | Reviewed   |
 | French     | `sky.dev`             | Reviewed   |
-| German     | **needs contributor** | Unreviewed |
+| German     | `pateu`               | Reviewed   |
 | Portuguese | `HomoSapien`          | Reviewed   |
 | Japanese   | **needs contributor** | Unreviewed |
 | Korean     | `kuro_99`             | Reviewed   |
@@ -24,7 +24,7 @@ The multilingual query templates in `background/queryLanguages.js` were initiall
 | Polish     | `OlushDev`            | Reviewed   |
 | Russian    | **needs contributor** | Unreviewed |
 
-The larger query pools are currently limited to Spanish, French, Portuguese, Korean, Polish, and Russian. Russian however still needs native speaker review.
+The larger query pools are currently limited to Spanish, French, German, Portuguese, Korean, Polish, Romanian, and Russian. Russian however still needs native speaker review.
 
 ### How to Review Translations
 

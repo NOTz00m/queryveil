@@ -9,7 +9,7 @@ QueryVeil generates realistic background searches to make a search profile less 
 - Generates search cover across 20 topic categories.
 - Supports Google, Bing, and DuckDuckGo.
 - Offers eight focused ghost personas or broad random noise.
-- Can mix 13 additional languages and locally fetched Google Trends.
+- Can mix 14 additional languages and locally fetched Google Trends.
 - Keeps settings, counters, and simulator state on your device with no telemetry.
 
 QueryVeil is a privacy aid, not an anonymity guarantee. Search providers can change their detection systems, and generated traffic still comes from your browser and network connection.
@@ -33,9 +33,9 @@ Temporary add-ons are removed when Firefox restarts. See [INSTALL.md](INSTALL.md
 
 1. Open QueryVeil from the Firefox toolbar.
 2. Choose an intensity, search engine, and optional ghost persona.
-3. Select **start veil**.
+3. Select **Start**.
 
-The popup shows current state, local query counts, pace, and a local obfuscation estimate. Advanced settings control languages, topics, schedules, autosuggest, trends, and debug logging.
+The popup shows current state, a countdown to the next search, a last-hour activity strip, local counts, and a local obfuscation estimate. The settings page controls pace, personas, languages, topics, schedules, autosuggest, trends, result clicks, and debug logging, and saves as you go.
 
 The current benchmark shows a real tradeoff, a persona close to normal interests is harder to separate, while a deliberately different decoy can dilute the original profile more aggressively. The default remains broad because it is a neutral starting point.
 

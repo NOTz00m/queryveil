@@ -65,18 +65,31 @@ class QueryVeilService {
     }
   }
 
+  // one status shape for both the getStatus reply and broadcasts
+  async buildStatus() {
+    const stats = await this.getStatistics();
+    let nextRunAt = null;
+    try {
+      const alarm = await browser.alarms.get(this.ALARM_NAME);
+      nextRunAt = alarm?.scheduledTime ?? null;
+    } catch (e) {
+      // alarms api unavailable, the ui just won't show a countdown
+    }
+
+    return {
+      isActive: this.settings?.enabled ?? false,
+      isPaused: this.settings?.paused ?? false,
+      settings: this.settings,
+      statistics: stats,
+      privacyScore: this.privacyScore.calculate(this.settings, stats),
+      nextRunAt
+    };
+  }
+
   async broadcastStatus() {
     try {
-      const stats = await this.getStatistics();
-      const scoreData = this.privacyScore.calculate(this.settings, stats);
-      await browser.runtime.sendMessage({
-        type: 'statusUpdated',
-        isActive: this.settings?.enabled ?? false,
-        isPaused: this.settings?.paused ?? false,
-        settings: this.settings,
-        statistics: stats,
-        privacyScore: scoreData
-      }).catch(() => {});
+      const status = await this.buildStatus();
+      await browser.runtime.sendMessage({ type: 'statusUpdated', ...status }).catch(() => {});
     } catch (e) {
       // no receivers open
     }
@@ -192,18 +205,10 @@ class QueryVeilService {
       await this.initializationPromise;
 
       switch (message.type) {
-        case 'getStatus': {
-          const stats = await this.getStatistics();
-          const scoreData = this.privacyScore.calculate(this.settings, stats);
-          sendResponse({
-            isActive: this.settings?.enabled ?? false,
-            isPaused: this.settings?.paused ?? false,
-            settings: this.settings,
-            statistics: stats,
-            privacyScore: scoreData
-          });
+        case 'getStatus':
+          sendResponse(await this.buildStatus());
           break;
-        }
+
         case 'toggle':
           this.settings.enabled = !this.settings.enabled;
           if (!this.settings.enabled) {
@@ -313,13 +318,15 @@ class QueryVeilService {
         await this.antiDetect.simulateAutosuggest(this.settings.searchEngine, query);
       }
 
-      const execResult = await this.antiDetect.executeQuery(this.settings.searchEngine, query, { language });
+      const wantsClick = this.settings.enableResultClicks && this.behaviorSim.shouldClickResult();
+      const execResult = await this.antiDetect.executeQuery(this.settings.searchEngine, query, {
+        language,
+        readBody: wantsClick
+      });
 
       if (execResult.success) {
-        this.updateStats();
-        if (this.settings.enableResultClicks && this.behaviorSim.shouldClickResult()) {
-          if (this.settings.debugMode) console.log('[QueryVeil] would click result (simulation)');
-        }
+        await this.updateStats();
+        if (wantsClick) await this.clickResult(execResult, language);
       }
       this.broadcastStatus();
     } catch (e) {
@@ -327,16 +334,53 @@ class QueryVeilService {
     }
   }
 
-  async updateStats() {
-    const data = await browser.storage.local.get('statistics');
-    const stats = data.statistics || { totalQueries: 0, queriesThisSession: 0 };
+  // pick a real link out of the results page that came back and fetch it,
+  // the way a person opens one result after scanning the page.
+  // if the engine served a page with no usable links we skip the click
+  // rather than inventing a url
+  async clickResult(execResult, language) {
+    const links = this.antiDetect.extractResultLinks(this.settings.searchEngine, execResult.body);
+    if (links.length === 0) {
+      if (this.settings.debugMode) console.log('[QueryVeil] no result links found, skipping click');
+      return;
+    }
 
-    stats.totalQueries++;
-    stats.queriesThisSession++;
-    stats.lastQueryTime = Date.now();
+    const position = Math.min(this.antiDetect.getResultPosition(), links.length);
+    const target = links[position - 1];
+    const click = await this.antiDetect.simulateResultClick(target, { language });
+
+    if (this.settings.debugMode) {
+      console.log(`[QueryVeil] clicked result #${position}: ${target}`, click.success ? '' : click.error);
+    }
+    if (click.success) await this.recordClick();
+  }
+
+  async updateStats() {
+    const stats = await this.getStatistics();
+    const now = Date.now();
+
+    stats.totalQueries = (stats.totalQueries || 0) + 1;
+    stats.queriesThisSession = (stats.queriesThisSession || 0) + 1;
+    stats.lastQueryTime = now;
+    // timestamps only, never query text. powers the activity strip in the popup
+    stats.recentQueries = this.trimRecent([...(stats.recentQueries || []), now]);
 
     await browser.storage.local.set({ statistics: stats });
     this.broadcastStatus();
+  }
+
+  async recordClick() {
+    const stats = await this.getStatistics();
+    const now = Date.now();
+    stats.resultClicks = (stats.resultClicks || 0) + 1;
+    stats.recentClicks = this.trimRecent([...(stats.recentClicks || []), now]);
+    await browser.storage.local.set({ statistics: stats });
+  }
+
+  // keep the last 24 hours, capped so storage never grows unbounded
+  trimRecent(times) {
+    const cutoff = Date.now() - 24 * 3600000;
+    return times.filter(time => time > cutoff).slice(-200);
   }
 
   handleSettingsChange() {
