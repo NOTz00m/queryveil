@@ -53,5 +53,5 @@ $RECYCLE.BIN/
 .env
 .env.local
 
-# Screenshot generator scratch
-store/.gen/
+# Store listing assets and screenshot generator (local only)
+store/
