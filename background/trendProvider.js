@@ -11,7 +11,11 @@ export class TrendProvider {
     // refresh every 3 hours so frequent enough to stay current,
     // infrequent enough to not look like automated polling
     this.CACHE_TTL = 3 * 60 * 60 * 1000;
-    this.TRENDS_URL = 'https://trends.google.com/trending/rss?geo=US';
+    // trends for the user's own country, so cover searches follow what
+    // people around them search. everyone pulling the us feed made every
+    // install look alike. the region comes from the browser's language
+    // setting (en-GB -> GB), no geolocation involved
+    this.TRENDS_URL = `https://trends.google.com/trending/rss?geo=${detectRegion()}`;
     this.cachedTopics = [];
     this.lastFetch = 0;
   }
@@ -61,10 +65,6 @@ export class TrendProvider {
   async fetchTrends() {
     const response = await fetch(this.TRENDS_URL, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/xml, text/xml, application/rss+xml',
-        'Accept-Language': 'en-US,en;q=0.5'
-      },
       credentials: 'omit', // no cookies needed for public rss
       cache: 'no-store'
     });
@@ -128,4 +128,13 @@ export class TrendProvider {
     if (this.cachedTopics.length === 0) return null;
     return this.cachedTopics[Math.floor(Math.random() * this.cachedTopics.length)];
   }
+}
+
+// region code from the browser's preferred languages, us if none has one
+export function detectRegion(languages = globalThis.navigator?.languages || []) {
+  for (const tag of languages) {
+    const match = /^[a-z]{2,3}-([A-Z]{2})$/i.exec(tag || '');
+    if (match) return match[1].toUpperCase();
+  }
+  return 'US';
 }

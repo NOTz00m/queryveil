@@ -3,6 +3,7 @@
 // the goal is noise that's indistinguishable from real human searches.
 
 import { QueryLanguages } from './queryLanguages.js';
+import { personalizeTopics, topicLeanings } from './installProfile.js';
 
 export class QueryGenerator {
   constructor(options = {}) {
@@ -11,6 +12,21 @@ export class QueryGenerator {
     this.markovChains = this.buildMarkovChains();
     this.queryLanguages = new QueryLanguages();
     this.currentSessionTopic = null;
+    this.topicLeanings = null;
+  }
+
+  // narrow the shared word lists to this install's own subset and give it
+  // its own topic leanings (see installProfile.js). enabled flags survive
+  applyInstallProfile(profile) {
+    if (!profile?.seed) return;
+    const enabled = Object.fromEntries(
+      Object.entries(this.topics).map(([id, topic]) => [id, topic.enabled])
+    );
+    this.topics = personalizeTopics(this.initializeTopics(), profile);
+    for (const [id, value] of Object.entries(enabled)) {
+      if (this.topics[id]) this.topics[id].enabled = value;
+    }
+    this.topicLeanings = topicLeanings(Object.keys(this.topics), profile);
   }
 
   // returns the current year as a string, used in templates
@@ -586,10 +602,26 @@ export class QueryGenerator {
   // persona can be null (random mode), trends is an array of strings.
   // returns { query, language } so caller knows what language headers to set
   generateQuery(complexity, settings, sessionInfo, persona = null, trends = []) {
-    // check if we should generate in a non-english language
-    const langResult = this.tryMultilingualQuery(settings);
-    if (langResult) {
-      return langResult;
+    const result = this.generateRawQuery(complexity, settings, sessionInfo, persona, trends);
+    // persona entities and templates may carry {year}
+    result.query = result.query.replace(/\{year\}/g, this.currentYear());
+    return result;
+  }
+
+  generateRawQuery(complexity, settings, sessionInfo, persona, trends) {
+    // a session stays in one language. a bilingual person searches a run
+    // of things in one language, they don't flip on every query
+    let sessionLanguage = sessionInfo?.language;
+    if (!sessionLanguage) {
+      const langResult = this.tryMultilingualQuery(settings);
+      sessionLanguage = langResult ? langResult.language : 'en';
+      if (sessionInfo) sessionInfo.language = sessionLanguage;
+      if (langResult) return langResult;
+    }
+
+    if (sessionLanguage !== 'en') {
+      const query = this.queryLanguages.generateLocalizedQuery(sessionLanguage, this.currentYear());
+      if (query) return { query, language: sessionLanguage };
     }
 
     // pick topic -- persona-weighted or random
@@ -681,6 +713,11 @@ export class QueryGenerator {
     // if persona is active, use weighted selection
     if (persona) {
       return this.selectWeightedTopic(persona, enabledTopics);
+    }
+
+    // no persona: lean the way this install leans
+    if (this.topicLeanings) {
+      return this.selectWeightedTopic({ topicWeights: this.topicLeanings }, enabledTopics);
     }
 
     return enabledTopics[Math.floor(Math.random() * enabledTopics.length)];
@@ -994,7 +1031,7 @@ export class QueryGenerator {
   addTemporalContext(query) {
     if (Math.random() > 0.20) return query;
 
-    const now = new Date();
+    const now = this.date();
     const hour = now.getHours();
     const day = now.getDay(); // 0=sun
     const month = now.getMonth(); // 0=jan

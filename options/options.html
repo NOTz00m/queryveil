@@ -78,6 +78,18 @@
               <label><input type="radio" name="searchEngine" value="duckduckgo"><span>DuckDuckGo</span></label>
             </div>
           </div>
+
+          <div class="row row-stack">
+            <div class="row-text">
+              <span class="label" id="modeLabel">How searches run</span>
+              <span class="help" id="modeHelp">Real pages opens each search in a hidden tab, so the results page loads, runs and sends cookies exactly like one you opened. Background only sends the request, which is lighter but missing everything a page loads after it.</span>
+            </div>
+            <div class="segmented" role="radiogroup" aria-labelledby="modeLabel">
+              <label><input type="radio" name="requestMode" value="page"><span>Real pages <small>recommended</small></span></label>
+              <label><input type="radio" name="requestMode" value="background"><span>Background</span></label>
+            </div>
+            <p id="modeUnsupported" class="warning" hidden>Real pages needs Firefox. This browser uses background requests.</p>
+          </div>
         </section>
 
         <!-- persona -->
@@ -91,10 +103,18 @@
         <section id="behavior" class="group" aria-labelledby="behaviorHeading">
           <h2 id="behaviorHeading">Behavior</h2>
 
+          <label class="row" for="followActivity">
+            <span class="row-text">
+              <span class="label">Follow my activity</span>
+              <span class="help">Hold off while your computer is idle or locked, and sometimes search a minute or two after you do. Cover that runs while nobody is there is easy to filter out.</span>
+            </span>
+            <input type="checkbox" class="switch" id="followActivity">
+          </label>
+
           <label class="row" for="enableAutosuggest">
             <span class="row-text">
               <span class="label">Type it out</span>
-              <span class="help">Send 3 to 6 autosuggest requests before each search, like someone typing in the box.</span>
+              <span class="help">Send a suggestion request for each keystroke at typing speed, without cookies, the way the Firefox address bar does. Now and then picks one of the suggestions instead.</span>
             </span>
             <input type="checkbox" class="switch" id="enableAutosuggest">
           </label>
@@ -110,7 +130,7 @@
           <label class="row" for="enableResultClicks">
             <span class="row-text">
               <span class="label">Open results</span>
-              <span class="help">About 4 in 10 searches open one real link from the results page, usually near the top. Only the page itself is requested, nothing on it runs. Skipped when the engine returns no links.</span>
+              <span class="help">About 4 in 10 searches open one real result, usually near the top. With real pages the link is clicked inside the results page, then the site stays open for a few seconds to a minute before the tab closes. In background mode only the page itself is requested and nothing on it runs.</span>
             </span>
             <input type="checkbox" class="switch" id="enableResultClicks">
           </label>

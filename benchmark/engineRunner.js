@@ -64,13 +64,8 @@ export function runRealEngine(settings, count, seed, options = {}) {
         activePersona,
         trends
       );
-      const referrer = transport.getReferrer(settings.searchEngine);
-      const searchUrl = transport.buildSearchURL(
-        settings.searchEngine,
-        result.query,
-        result.language
-      );
-      const headers = transport.getHeaders(referrer, result.language);
+      const searchUrl = transport.buildSearchURL(settings.searchEngine, result.query);
+      const headers = transport.describeNavigationHeaders();
       const prefixes = settings.enableAutosuggest
         ? transport.generateTypingPrefixes(result.query)
         : [];
@@ -119,8 +114,8 @@ export function validateEngineRun(run, settings, catalog) {
     if (new URL(event.searchUrl).hostname !== expectedHost) {
       failures.push(`wrong search host for ${settings.searchEngine}`);
     }
-    if (!event.headers.Accept || !event.headers['Accept-Language']) {
-      failures.push('missing request headers');
+    if (!event.headers.Accept || event.headers['Sec-Fetch-Mode'] !== 'navigate') {
+      failures.push('search request is not shaped as a navigation');
     }
     if (settings.enableAutosuggest && event.prefixes.length === 0) {
       failures.push('autosuggest produced no prefixes');

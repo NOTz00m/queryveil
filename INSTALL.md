@@ -65,12 +65,18 @@ Aim for a score in the green (80+) by letting the extension run continuously wit
 **High bandwidth/CPU usage:**
 
 - Lower intensity to `Low`.
-- Disable Result Click simulation (it loads full pages).
-- Disable Autosuggest Simulation (it sends a few extra lightweight requests per search).
+- Set **How searches run** to `Background`. Real pages loads each results page fully in a hidden tab, which costs about as much as opening it yourself.
+- Disable Result Click simulation (it loads the result site too).
+- Disable Autosuggest Simulation (it sends one small request per typed character).
 - Use the schedule feature to limit active hours.
+
+**Firefox says an extension hid a tab:**
+
+- That's QueryVeil's cover tab. Firefox shows this notice the first time any extension hides a tab. Cover tabs close by themselves within about a minute.
 
 **Queries not increasing:**
 
+- With **Follow my activity** on, QueryVeil holds off while the computer is idle or locked. Use the browser normally and searches resume.
 - Wait 5-10 minutes. The timing is statistically randomized and the extension simulates breaks just like a real human browsing session.
 - Ensure your PC is not in a low-power sleep mode that completely suspends background scripts.
 - Check the console (F12) for errors.

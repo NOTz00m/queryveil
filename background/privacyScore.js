@@ -109,10 +109,13 @@ export class PrivacyScore {
 
   // bonus points for enabling extra features that improve realism
   featuresFactor(settings) {
-    let score = 30; // base score for having the extension at all
+    let score = 10; // base score for having the extension at all
 
-    if (settings?.enableAutosuggest) score += 35;
-    if (settings?.enableTrends) score += 35;
+    // real page loads matter most: a bare request is the easiest tell
+    if (settings?.requestMode !== 'background') score += 30;
+    if (settings?.followActivity !== false) score += 20;
+    if (settings?.enableAutosuggest) score += 20;
+    if (settings?.enableTrends) score += 20;
 
     return Math.min(100, score);
   }

@@ -7,9 +7,12 @@ QueryVeil generates realistic background searches to make a search profile less 
 ## What it does
 
 - Generates search cover across 20 topic categories.
+- Runs each cover search as a real page in a hidden Firefox tab, with the same URL, headers and cookies as a search you typed, then cleans it out of your history.
+- Follows your activity: quiet while you're away, and some cover right after your own searches.
 - Supports Google, Bing, and DuckDuckGo.
 - Offers eight focused ghost personas or broad random noise.
 - Can mix 14 additional languages and locally fetched Google Trends.
+- Gives every install its own vocabulary and persona variant, so installs don't share one recognisable pattern.
 - Keeps settings, counters, and simulator state on your device with no telemetry.
 
 QueryVeil is a privacy aid, not an anonymity guarantee. Search providers can change their detection systems, and generated traffic still comes from your browser and network connection.

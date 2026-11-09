@@ -102,7 +102,7 @@ function formatMarkdownReport(results) {
     '',
     '## Feature Checks',
     '',
-    '- All request URLs resolved to the selected search engine and used matching language headers.',
+    '- All request URLs resolved to the selected search engine, in the shape the Firefox address bar uses, and were shaped as navigations.',
     `- Autosuggest produced **${results.coverage.autosuggestRequests.toLocaleString('en-US')} incremental prefix requests** in enabled cases and none in disabled cases.`,
     `- The observed result-click decision rate was **${percent(results.coverage.resultClickIntentRate)}** when that setting was enabled.`,
     '- All generated languages were recognized by the shipped language catalog.',

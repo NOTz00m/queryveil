@@ -44,7 +44,7 @@ export class PersonaEngine {
             'coffee shop near campus', 'grocery budget weekly'
           ],
           entertainment: [
-            'spotify student discount', 'free movies streaming', 'party playlist 2025',
+            'spotify student discount', 'free movies streaming', 'party playlist {year}',
             'board games for groups', 'netflix student deals', 'youtube study music',
             'weekend plans ideas college', 'campus events this week'
           ],
@@ -80,7 +80,7 @@ export class PersonaEngine {
         },
         entities: {
           technology: [
-            'vscode extensions productivity', 'docker compose tutorial', 'react vs svelte 2025',
+            'vscode extensions productivity', 'docker compose tutorial', 'react vs svelte {year}',
             'github copilot worth it', 'typescript generics explained', 'aws lambda cold start',
             'tailwind css cheat sheet', 'postgres vs mysql performance', 'ci cd pipeline setup',
             'cursor ide review', 'linear app project management', 'vercel deployment guide',
@@ -121,7 +121,7 @@ export class PersonaEngine {
         entities: {
           health: [
             'push pull legs split', 'creatine loading phase', 'foam roller exercises',
-            'best protein powder 2025', 'stretching routine morning', 'sleep quality tips',
+            'best protein powder {year}', 'stretching routine morning', 'sleep quality tips',
             'overtraining symptoms', 'progressive overload explained', 'heart rate zones running',
             'ice bath benefits recovery', 'mobility warm up routine', 'deload week schedule',
             'vo2 max improvement', 'body recomposition guide', 'cortisol and muscle growth'
@@ -132,7 +132,7 @@ export class PersonaEngine {
             'greek yogurt protein content', 'meal prep containers glass', 'creatine in food sources'
           ],
           shopping: [
-            'best running shoes 2025', 'gym bag with shoe compartment', 'resistance bands set',
+            'best running shoes {year}', 'gym bag with shoe compartment', 'resistance bands set',
             'whey protein isolate deal', 'fitness tracker heart rate', 'weightlifting belt leather',
             'wireless earbuds gym sweat', 'compression shorts review'
           ],
@@ -158,7 +158,7 @@ export class PersonaEngine {
         },
         entities: {
           parenting: [
-            'baby sleep schedule 6 months', 'teething symptoms timeline', 'best stroller 2025',
+            'baby sleep schedule 6 months', 'teething symptoms timeline', 'best stroller {year}',
             'diaper rash treatment', 'baby food introduction chart', 'sleep training methods',
             'car seat installation guide', 'baby proofing checklist', 'tummy time activities',
             'developmental milestones 1 year', 'toddler tantrums tips', 'breastfeeding positions',
@@ -275,16 +275,16 @@ export class PersonaEngine {
         },
         entities: {
           gaming: [
-            'elden ring best build', 'baldurs gate 3 companion guide', 'steam sale dates 2025',
+            'elden ring best build', 'baldurs gate 3 companion guide', 'steam sale dates {year}',
             'palworld server setup', 'gta 6 release date confirmed', 'helldivers 2 stratagems list',
             'factorio belt ratios', 'valorant crosshair settings pro', 'minecraft farm designs',
-            'cyberpunk 2077 phantom liberty endings', 'best roguelike games 2025',
+            'cyberpunk 2077 phantom liberty endings', 'best roguelike games {year}',
             'league of legends patch notes', 'game pass new releases', 'indie games hidden gems',
             'dark souls boss order', 'stardew valley sprinkler layout'
           ],
           technology: [
             'rtx 5090 benchmark', 'best gaming monitor 1440p 240hz', 'mechanical keyboard switches',
-            'pc build guide 2025 budget', 'ryzen 9000 vs intel', 'ssd nvme gen5 speed',
+            'pc build guide {year} budget', 'ryzen 9000 vs intel', 'ssd nvme gen5 speed',
             'gpu comparison chart', 'ram speed gaming difference', 'windows game mode settings'
           ],
           entertainment: [
@@ -331,7 +331,7 @@ export class PersonaEngine {
             'local advertising options', 'networking events business'
           ],
           news: [
-            'small business grants 2025', 'minimum wage update', 'supply chain news',
+            'small business grants {year}', 'minimum wage update', 'supply chain news',
             'economic forecast small business', 'new tax law changes'
           ]
         }

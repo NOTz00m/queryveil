@@ -1,25 +1,25 @@
 # Benchmark and Effectiveness
 
-**Last run:** 2026-07-28  
-**Extension version:** 1.3.0  
+**Last run:** 2026-11-09  
+**Extension version:** 1.5.0  
 **Benchmark seed:** `queryveil-v1.3`
 
 ## Summary
 
-QueryVeil passed **773 real-engine settings configurations** with **0 failures**. The audit covers every user-selectable value, boundary values such as custom rates of 1 and 60 queries per hour, every topic and language, and every pair of settings at least once.
+QueryVeil passed **775 real-engine settings configurations** with **0 failures**. The audit covers every user-selectable value, boundary values such as custom rates of 1 and 60 queries per hour, every topic and language, and every pair of settings at least once.
 
 > The overall score is deliberately conservative. It combines resistance to a balanced text classifier, behavioral anomaly signals, and how much the original interest profile is diluted. It is not a promise that a search provider cannot detect generated traffic.
 
 | Configuration | Effectiveness ↑ | Detector Resistance ↑ | Profile Dilution ↑ | Classifier Accuracy ↓ | Anomaly Risk ↓ |
 |:---|---:|---:|---:|---:|---:|
 | **Off** | 0.0/100 | 0.0/100 | 0.0% | N/A | N/A |
-| **Low, 5 Topics** | 44.8/100 | 53.7/100 | 32.5% | 74.8% | 42.3/100 |
-| **Default** | 46.5/100 | 54.1/100 | 35.9% | 75.4% | 39.7/100 |
-| **Balanced** | 46.1/100 | 53.8/100 | 35.6% | 75.7% | 40.0/100 |
-| **Aligned Persona** | 50.0/100 | **65.5/100** | 28.7% | **66.8%** | **35.5/100** |
-| **Decoy Persona** | 47.1/100 | 52.5/100 | 39.5% | 76.0% | 42.0/100 |
-| **Multilingual** | **50.1/100** | 56.4/100 | **41.5%** | 72.9% | 41.0/100 |
-| **Custom 30/hr** | 47.2/100 | 52.3/100 | 40.1% | 76.2% | 42.0/100 |
+| **Low, 5 Topics** | 45.0/100 | 53.3/100 | 33.6% | 75.0% | 42.6/100 |
+| **Default** | 45.9/100 | 52.8/100 | 36.3% | 76.6% | 40.1/100 |
+| **Balanced** | 47.5/100 | 55.5/100 | 36.5% | 74.2% | 39.8/100 |
+| **Aligned Persona** | **48.5/100** | **62.1/100** | 29.8% | **69.8%** | **35.5/100** |
+| **Decoy Persona** | 46.6/100 | 51.0/100 | 40.6% | 77.4% | 41.7/100 |
+| **Multilingual** | 48.3/100 | 53.1/100 | **41.7%** | 75.8% | 41.2/100 |
+| **Custom 30/hr** | 47.3/100 | 53.4/100 | 38.8% | 75.2% | 41.8/100 |
 
 _Bold values mark the strongest measured result in each column. Arrows show whether higher or lower is better._
 
@@ -33,14 +33,14 @@ _Bold values mark the strongest measured result in each column. Arrows show whet
 
 ## Test Coverage
 
-The settings audit generated **3,144 queries** by calling the shipped `QueryGenerator`, `PersonaEngine`, `BehaviorSimulator`, and `AntiDetection` modules. No benchmark-only query generator is used.
+The settings audit generated **3,168 queries** by calling the shipped `QueryGenerator`, `PersonaEngine`, `BehaviorSimulator`, and `AntiDetection` modules. No benchmark-only query generator is used.
 
 | Area | Coverage |
 |:---|:---|
 | **Intensity** | Low, medium, high, custom 1/hr, custom 12/hr, and custom 60/hr |
 | **Search engines** | Google, Bing, DuckDuckGo |
 | **Personas** | None plus all 8 shipped personas |
-| **Languages** | All 14 primary languages, every additional language at 50%, and the all-language mix |
+| **Languages** | All 15 primary languages, every additional language at 50%, and the all-language mix |
 | **Topics** | All 20 topics alone, each topic disabled once, all enabled, five-topic sets, and none enabled |
 | **Feature switches** | Every on/off combination for trends, autosuggest, result clicks, and debug mode |
 | **State and schedule** | Active, paused, off, daytime, overnight, disabled, and equal-hour all-day boundary |
@@ -50,9 +50,9 @@ The effectiveness trials use five synthetic but human-shaped search profiles, re
 
 ## Feature Checks
 
-- All request URLs resolved to the selected search engine and used matching language headers.
-- Autosuggest produced **6,714 incremental prefix requests** in enabled cases and none in disabled cases.
-- The observed result-click decision rate was **39.4%** when that setting was enabled.
+- All request URLs resolved to the selected search engine, in the shape the Firefox address bar uses, and were shaped as navigations.
+- Autosuggest produced **28,557 incremental prefix requests** in enabled cases and none in disabled cases.
+- The observed result-click decision rate was **40.2%** when that setting was enabled.
 - All generated languages were recognized by the shipped language catalog.
 - Paused, disabled, and out-of-schedule configurations produced no search events.
 

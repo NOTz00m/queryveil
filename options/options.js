@@ -51,6 +51,7 @@ const ENGINES = { google: 'Google', bing: 'Bing', duckduckgo: 'DuckDuckGo' };
 const RATES = { low: 6, medium: 12, high: 20 };
 
 let currentSettings = null;
+let pageModeSupported = true;
 let personaList = [];
 let saveTimer = null;
 let savePending = false;
@@ -58,6 +59,7 @@ let savePending = false;
 document.addEventListener('DOMContentLoaded', async () => {
   const [status] = await Promise.all([loadStatus(), loadPersonas()]);
   currentSettings = status?.settings || getDefaultSettings();
+  pageModeSupported = status?.capabilities?.pageMode !== false;
   renderRunState(status);
 
   buildHourSelects();
@@ -101,6 +103,8 @@ function getDefaultSettings() {
     intensity: 'medium',
     customRate: 12,
     searchEngine: 'google',
+    requestMode: 'page',
+    followActivity: true,
     enableResultClicks: false,
     enableAutosuggest: false,
     enableTrends: true,
@@ -192,6 +196,8 @@ function fillForm() {
   setValue('customRate', settings.customRate ?? 12);
   setRadio('searchEngine', settings.searchEngine || 'google');
   setRadio('persona', settings.persona || 'none');
+  setRadio('requestMode', pageModeSupported ? (settings.requestMode || 'page') : 'background');
+  setChecked('followActivity', settings.followActivity !== false);
   setChecked('enableAutosuggest', settings.enableAutosuggest);
   setChecked('enableTrends', settings.enableTrends !== false);
   setChecked('enableResultClicks', settings.enableResultClicks);
@@ -217,6 +223,11 @@ function fillForm() {
 function renderDerived() {
   const intensity = getRadio('intensity');
   document.getElementById('customRateRow').hidden = intensity !== 'custom';
+
+  const pageInput = document.querySelector('input[name="requestMode"][value="page"]');
+  pageInput.disabled = !pageModeSupported;
+  pageInput.parentElement.classList.toggle('is-disabled', !pageModeSupported);
+  document.getElementById('modeUnsupported').hidden = pageModeSupported;
   document.getElementById('customRateOut').textContent = `${getInt('customRate', 12)}/hr`;
 
   // the main language can't also be an extra one
@@ -311,6 +322,8 @@ function collectSettings() {
     customRate: getInt('customRate', 12),
     searchEngine: getRadio('searchEngine'),
     persona: getRadio('persona'),
+    requestMode: getRadio('requestMode') || 'page',
+    followActivity: isChecked('followActivity'),
     enableAutosuggest: isChecked('enableAutosuggest'),
     enableTrends: isChecked('enableTrends'),
     enableResultClicks: isChecked('enableResultClicks'),

@@ -77,8 +77,12 @@ export class BehaviorSimulator {
     const queriesInSession = Math.max(2, Math.min(8, sessionLength));
 
     this.currentSession = {
+      id: `${this.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`,
       queriesRemaining: queriesInSession,
       topic: null, // set by query generator when the first query fires
+      language: null, // set with the first query, kept for the whole session
+      lastQuery: null,
+      queriesDone: 0,
       startTime: this.now() + sessionGap
     };
 
@@ -214,12 +218,23 @@ export class BehaviorSimulator {
     this.lastQueryTime = this.now();
   }
 
-  // decide whether to fire during active vs idle browsing.
-  // real humans search during both states, but more during active
-  shouldMixWithActivity(userState) {
-    if (userState === 'locked') return false;
-    const threshold = userState === 'active' ? 0.7 : 0.3;
-    return Math.random() < threshold;
+  // whether to run a scheduled search given the user's idle state.
+  // cover searches while nobody is at the computer are easy to pick out:
+  // nothing else from this browser is happening around them.
+  // locked: never. idle: rarely, people do leave a tab working. active: yes
+  shouldRunForIdleState(idleState) {
+    if (idleState === 'locked') return false;
+    if (idleState === 'idle') return Math.random() < 0.1;
+    return true;
+  }
+
+  // when the user searches for real, sometimes place a cover search a
+  // little after it, so real searches don't stand alone in the timeline.
+  // returns a delay in ms, or null for no echo
+  getEchoDelay() {
+    if (Math.random() > 0.55) return null;
+    // 30 seconds to 4 minutes, skewed toward the short end
+    return 30000 + this.gammaRandom(2, 45000);
   }
 
   // --- statistical distributions ---

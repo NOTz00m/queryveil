@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QueryVeil",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Privacy-focused search cover with human-shaped timing, ghost personas, trends, and multilingual queries.",
   
   "icons": {
@@ -13,12 +13,21 @@
     "https://www.google.com/*",
     "https://trends.google.com/*",
     "https://www.bing.com/*",
-    "https://duckduckgo.com/*"
+    "https://duckduckgo.com/*",
+    "https://ac.duckduckgo.com/*"
   ],
 
   "permissions": [
     "storage",
-    "alarms"
+    "alarms",
+    "idle",
+    "search",
+    "tabHide",
+    "scripting",
+    "webRequest",
+    "webRequestBlocking",
+    "history",
+    "sessions"
   ],
 
   "background": {
@@ -30,7 +39,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "queryveil@privacy.extension",
-      "strict_min_version": "112.0"
+      "strict_min_version": "115.0"
     }
   },
 
